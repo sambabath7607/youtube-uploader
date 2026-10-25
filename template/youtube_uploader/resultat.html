@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block titre %}Résultat de l'envoi{% endblock %}
+
+{% block contenu %}
+    <h1>Résultat de l'envoi</h1>
+<p>Titre : {{ video.titre }}</p>
+<p>État : {{ video.get_etat_display }}</p>
+{% if video.youtube_id %}
+    <p>ID YouTube : {{ video.youtube_id }}</p>
+{% endif %}
+{% if video.erreur %}
+    <p>Erreur : {{ video.erreur }}</p>
+{% endif %}
+<a href="{% url 'nouvelle_video' %}">Envoyer une autre vidéo</a>
+{% endblock %}

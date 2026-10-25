@@ -1,0 +1,40 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="{% block description %}Envoie tes vidéos sur ta chaîne YouTube depuis le site ou par une API, avec Claude Code.{% endblock %}">
+    <title>{% block titre %}YouTube Uploader{% endblock %}</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+    <header class="container">
+        <nav>
+            <ul>
+                <li><a href="{% url 'accueil' %}"><strong>YouTube Uploader</strong></a></li>
+            </ul>
+            <ul>
+                {% if user.is_authenticated %}
+                    <li><a href="{% url 'accueil' %}">Accueil</a></li>
+                    <li><a href="{% url 'nouvelle_video' %}">Envoyer</a></li>
+                    <li><a href="{% url 'ma_cle' %}">Ma clé</a></li>
+                    <li><a href="{% url 'guide_api' %}">Guide</a></li>
+                {% else %}
+                    <li><a href="{% url 'guide_api' %}">Guide</a></li>
+                    <li><a href="{% url 'login' %}">Connexion</a></li>
+                    <li><a href="{% url 'inscription' %}" role="button">S'inscrire</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+    </header>
+    <main class="container">
+        {% include "accounts/messages.html" %}
+        {% block contenu %}{% endblock %}
+    </main>
+    <footer class="container">
+        {% include "accounts/pied_de_page.html" %}
+    </footer>
+</body>
+</html>

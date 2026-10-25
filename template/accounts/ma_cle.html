@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block titre %}Ma clé d'API{% endblock %}
+
+{% block contenu %}
+<h1>Ma clé d'API</h1>
+
+<p>Cette clé permet à Claude Code d'envoyer des vidéos sur ta chaîne. Ne la partage avec personne.</p>
+
+<label for="cle">Ta clé :</label>
+<input type="text" id="cle" value="{{ token.key }}" readonly size="45">
+<button type="button" id="copier">Copier</button>
+<span id="copie-ok" hidden>Clé copiée.</span>
+
+<form method="post" action="{% url 'ma_cle' %}" id="form-regenerer">
+    {% csrf_token %}
+    <button type="submit">Régénérer la clé</button>
+</form>
+
+<p>Après avoir régénéré la clé, mets-la à jour sur ton ordinateur :</p>
+<pre>setx YOUTUBE_API_KEY "NOUVELLE_CLE"</pre>
+
+<p><a href="{% url 'accueil' %}">Retour à l'accueil</a></p>
+
+<script>
+    document.getElementById("copier").addEventListener("click", function () {
+        navigator.clipboard.writeText(document.getElementById("cle").value).then(function () {
+            document.getElementById("copie-ok").hidden = false;
+        });
+    });
+    document.getElementById("form-regenerer").addEventListener("submit", function (e) {
+        if (!confirm("L'ancienne clé ne marchera plus. Continuer ?")) {
+            e.preventDefault();
+        }
+    });
+</script>
+{% endblock %}

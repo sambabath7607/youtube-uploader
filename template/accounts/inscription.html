@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block titre %}Créer un compte{% endblock %}
+
+{% block contenu %}
+<h1>Créer un compte</h1>
+
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <p>
+        Lire les <a href="{% url 'conditions' %}">conditions d'utilisation</a>
+        et la <a href="{% url 'confidentialite' %}">politique de confidentialité</a>.
+    </p>
+    <button type="submit">S'inscrire</button>
+</form>
+
+<p>Déjà un compte ? <a href="{% url 'login' %}">Se connecter</a></p>
+{% endblock %}

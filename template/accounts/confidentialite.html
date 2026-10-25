@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block titre %}Politique de confidentialité{% endblock %}
+
+{% block contenu %}
+<!-- BROUILLON : à compléter (parties entre crochets) et à faire relire par un professionnel avant la mise en ligne. -->
+<h1>Politique de confidentialité</h1>
+<p>Dernière mise à jour : [date de mise en ligne]</p>
+
+<h2>1. Qui sommes-nous</h2>
+<p>
+    Ce service est édité par Batch Code AI. Responsable de la protection des
+    renseignements personnels : Batch Code AI, joignable à <a href="mailto:sambademblee40@outlook.fr">sambademblee40@outlook.fr</a>.
+</p>
+
+<h2>2. Données collectées</h2>
+<ul>
+    <li>Compte : nom d'utilisateur, adresse e-mail (si fournie), mot de passe (enregistré haché, jamais lisible).</li>
+    <li>Connexion YouTube : le jeton d'accès fourni par Google quand tu connectes ta chaîne.</li>
+    <li>Envois : titre, description, réponse « conçue pour les enfants », état de l'envoi, identifiant YouTube de la vidéo.</li>
+    <li>Fichiers vidéo : conservés sur le serveur uniquement le temps de l'envoi, puis supprimés automatiquement.</li>
+</ul>
+
+<h2>3. Utilisation des données</h2>
+<p>
+    Nous utilisons ces données uniquement pour envoyer sur ta chaîne YouTube les vidéos que tu nous demandes
+    d'envoyer, et pour te montrer l'état de ces envois. Nous ne vendons pas tes données, nous ne les utilisons
+    pas pour de la publicité, et nous ne les utilisons pas pour entraîner des modèles d'intelligence artificielle.
+</p>
+
+<h2>4. Services d'API YouTube et Google</h2>
+<p>
+    Ce service utilise les services d'API YouTube. En connectant ta chaîne, tu acceptes aussi les
+    <a href="https://www.youtube.com/t/terms">Conditions d'utilisation de YouTube</a>. Les données transmises à
+    Google sont traitées selon les
+    <a href="https://policies.google.com/privacy">Règles de confidentialité de Google</a>.
+</p>
+<p>
+    L'utilisation et le transfert à toute autre application des informations reçues des API Google respectent le
+    <a href="https://developers.google.com/terms/api-services-user-data-policy">Règlement sur les données utilisateur
+    des services d'API Google</a>, y compris les exigences d'utilisation limitée.
+</p>
+<p>
+    Nous demandons une seule permission : envoyer des vidéos sur ta chaîne. Tu peux retirer cet accès à tout moment
+    depuis ta page d'accueil (« Déconnecter ma chaîne YouTube ») ou sur
+    <a href="https://myaccount.google.com/permissions">la page des autorisations de ton compte Google</a>.
+</p>
+
+<h2>5. Partage des données</h2>
+<p>
+    Tes vidéos et leurs informations sont transmises à YouTube (Google), seulement quand tu demandes un envoi.
+    Nous ne partageons tes données avec personne d'autre, sauf si la loi nous y oblige.
+    Hébergement : [nom de l'hébergeur et pays du serveur].
+</p>
+
+<h2>6. Durée de conservation</h2>
+<ul>
+    <li>Fichiers vidéo : supprimés dès la fin de l'envoi, qu'il ait réussi ou non.</li>
+    <li>Compte, jeton YouTube et historique des envois : conservés jusqu'à la suppression de ton compte.</li>
+</ul>
+
+<h2>7. Sécurité</h2>
+<p>
+    Les mots de passe ne sont jamais enregistrés en clair (ils sont hachés). Les jetons d'accès ne sont jamais affichés ni écrits dans les
+    journaux. Le site est accessible uniquement en HTTPS. Les jetons Google sont chiffrés dans la base de données, et la clé de chiffrement est conservée en dehors de celle-ci. Tu peux régénérer ta clé d'API à tout moment.
+</p>
+
+<h2>8. Tes droits</h2>
+<p>
+    Selon la loi qui s'applique à toi (RGPD en Europe, LPRPDE au Canada, Loi 25 au Québec), tu peux accéder à tes
+    données, les corriger, les exporter et les supprimer :
+</p>
+<ul>
+    <li>Télécharger tes données : « Télécharger mes données » sur ta page d'accueil.</li>
+    <li>Supprimer ton compte et toutes tes données : « Supprimer mon compte ».</li>
+    <li>Pour toute autre demande ou plainte : <a href="mailto:sambademblee40@outlook.fr">sambademblee40@outlook.fr</a>.</li>
+</ul>
+
+<h2>9. Âge minimum</h2>
+<p>Le service est réservé aux personnes d'au moins 13 ans, ou de l'âge minimum exigé dans leur pays.</p>
+
+<h2>10. Incident de sécurité</h2>
+<p>En cas de fuite de données, nous prévenons les personnes concernées et les autorités, comme la loi l'exige.</p>
+
+<h2>11. Modifications</h2>
+<p>Nous pouvons modifier cette politique. La date en haut de la page indique la dernière version.</p>
+
+<p><a href="{% url 'login' %}">Retour au site</a></p>
+{% endblock %}

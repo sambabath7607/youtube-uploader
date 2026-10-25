@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block titre %}Guide de l'API – YouTube Uploader{% endblock %}
+
+{% block contenu %}
+<h1>Guide de l'API YouTube Uploader</h1>
+<p>Cette API permet d'envoyer des vidéos sur ta propre chaîne YouTube depuis un terminal ou avec Claude Code, sans passer par le site.</p>
+
+<h2>1. Créer ton compte</h2>
+<ol>
+    <li><a href="{% url 'inscription' %}">Inscris-toi</a> sur le site.</li>
+    <li>Sur l'accueil, clique sur « Connecter ma chaîne YouTube » et accepte l'accès demandé par Google.</li>
+</ol>
+
+<h2>2. Récupérer ta clé d'API</h2>
+<p>Va sur la page « Ma clé d'API » et copie ta clé. Elle prouve à l'API que c'est bien toi. Ne la partage jamais. Si elle a fuité, clique sur « Régénérer ».</p>
+<p>Sous Windows, enregistre-la une seule fois, puis ouvre un nouveau terminal :</p>
+<pre>setx YOUTUBE_API_KEY "TA_CLE"</pre>
+
+<h2>3. Envoyer une vidéo</h2>
+<pre>curl.exe -X POST http://127.0.0.1:8000/youtube/api/v1/videos/ -H "Authorization: Token TA_CLE" -F "fichier=@video.mp4" -F "titre=Ma vidéo" -F "pour_enfants=false"</pre>
+<ul>
+    <li><strong>fichier</strong> : ta vidéo (obligatoire).</li>
+    <li><strong>titre</strong> : le titre sur YouTube (obligatoire).</li>
+    <li><strong>pour_enfants</strong> : true ou false (obligatoire, c'est une règle de YouTube).</li>
+</ul>
+<p>L'API répond tout de suite avec le code 202 et un numéro de vidéo. L'envoi vers YouTube continue en arrière-plan.</p>
+
+<h2>4. Suivre l'état de l'envoi</h2>
+<pre>curl.exe http://127.0.0.1:8000/youtube/api/v1/videos/NUMERO/ -H "Authorization: Token TA_CLE"</pre>
+<p>Le champ « etat » indique où en est l'envoi. Si l'envoi échoue, le champ « erreur » explique pourquoi.</p>
+
+<h2>5. Voir la liste de tes vidéos</h2>
+<pre>curl.exe http://127.0.0.1:8000/youtube/api/v1/videos/ -H "Authorization: Token TA_CLE"</pre>
+<p>La liste affiche 20 vidéos par page. Ajoute ?page=2 à l'adresse pour voir la suite.</p>
+
+<h2>6. Utiliser Claude Code</h2>
+<p>Ouvre Claude Code dans le dossier du projet et demande-lui d'envoyer ta vidéo. Il te posera les questions obligatoires, comme le titre et « pour enfants », avant chaque envoi.</p>
+
+<h2>Limites</h2>
+<ul>
+    <li>Formats acceptés : mp4, mov, webm.</li>
+    <li>Taille maximale : 500 Mo.</li>
+    <li>5 envois par jour et par compte.</li>
+    <li>60 requêtes par minute.</li>
+    <li>YouTube a aussi sa propre limite d'envois par jour.</li>
+</ul>
+
+<h2>Erreurs possibles</h2>
+<p>Chaque erreur répond au format : {"erreur": "message", "code": "nom_court"}.</p>
+<ul>
+    <li><strong>400</strong> : un champ manque ou il est invalide, ou ta chaîne n'est pas connectée.</li>
+    <li><strong>401</strong> : clé d'API absente ou fausse.</li>
+    <li><strong>404</strong> : vidéo introuvable.</li>
+    <li><strong>405</strong> : mauvaise méthode, GET au lieu de POST par exemple.</li>
+    <li><strong>429</strong> : trop de requêtes, ou limite d'envois du jour atteinte.</li>
+</ul>
+
+<h2>Tes données</h2>
+<p>Tu peux à tout moment déconnecter ta chaîne, télécharger tes données ou supprimer ton compte depuis l'accueil.</p>
+{% endblock %}

@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block contenu %}
+
+<h1>Bienvenue, {{ user.username }} !</h1>
+
+<p>Vous êtes connecté.</p>
+
+<h2>Ma chaîne YouTube</h2>
+{% if user.youtubecredentials %}
+    <p>Chaîne YouTube connectée.</p>
+    <form method="post" action="{% url 'deconnecter_youtube' %}" id="form-deconnecter">
+        {% csrf_token %}
+        <button type="submit">Déconnecter ma chaîne YouTube</button>
+    </form>
+{% else %}
+    <a href="{% url 'connecter_youtube' %}">Connecter ma chaîne YouTube</a>
+{% endif %}
+
+<h2>Mes outils</h2>
+<ul>
+    <li><a href="{% url 'nouvelle_video' %}">Envoyer une vidéo</a></li>
+    <li><a href="{% url 'ma_cle' %}">Ma clé d'API</a></li>
+    <li><a href="{% url 'guide_api' %}">Guide de l'API</a></li>
+</ul>
+
+<h2>Mon compte</h2>
+<ul>
+    <li><a href="{% url 'mes_donnees' %}">Télécharger mes données</a></li>
+    <li><a href="{% url 'supprimer_compte' %}">Supprimer mon compte</a></li>
+</ul>
+
+<form method="post" action="{% url 'logout' %}">
+    {% csrf_token %}
+    <button type="submit">Se déconnecter</button>
+</form>
+
+<script>
+    var formDeconnecter = document.getElementById("form-deconnecter");
+    if (formDeconnecter) {
+        formDeconnecter.addEventListener("submit", function (e) {
+            if (!confirm("Le site ne pourra plus envoyer de vidéos sur ta chaîne. Continuer ?")) {
+                e.preventDefault();
+            }
+        });
+    }
+</script>
+{% endblock %}

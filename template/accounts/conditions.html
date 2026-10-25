@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block titre %}Conditions d'utilisation{% endblock %}
+
+{% block contenu %}
+<!-- BROUILLON : à compléter (parties entre crochets) et à faire relire par un professionnel avant la mise en ligne. -->
+<h1>Conditions d'utilisation</h1>
+<p>Dernière mise à jour : [date de mise en ligne]</p>
+
+<h2>1. Le service</h2>
+<p>
+    YouTube Uploader permet d'envoyer des vidéos sur ta propre chaîne YouTube, depuis le site ou par une API
+    (par exemple avec Claude Code), à l'aide d'une clé personnelle.
+</p>
+
+<h2>2. Acceptation</h2>
+<p>
+    En créant un compte, tu acceptes ces conditions et notre
+    <a href="{% url 'confidentialite' %}">politique de confidentialité</a>. Tu dois avoir au moins 13 ans,
+    ou l'âge minimum exigé dans ton pays.
+</p>
+
+<h2>3. YouTube</h2>
+<p>
+    Ce service utilise les services d'API YouTube. En l'utilisant, tu acceptes d'être lié par les
+    <a href="https://www.youtube.com/t/terms">Conditions d'utilisation de YouTube</a>.
+    Ce service n'est ni édité ni approuvé par YouTube ou Google.
+</p>
+
+<h2>4. Tes responsabilités</h2>
+<ul>
+    <li>Tu es seul responsable des vidéos que tu envoies et de leurs informations (titre, description).</li>
+    <li>Tu indiques toi-même, pour chaque vidéo, si elle est conçue pour les enfants. Cette déclaration engage ta responsabilité légale.</li>
+    <li>Tu déclares à YouTube les contenus réalistes générés ou modifiés par intelligence artificielle.</li>
+    <li>Tu possèdes les droits sur tout ce que contient la vidéo (musiques, images, extraits, polices).</li>
+    <li>Tu respectes le Règlement de la communauté YouTube : pas de contenu trompeur, haineux, violent, sexuel ni de spam.</li>
+</ul>
+
+<h2>5. Ta clé d'API</h2>
+<p>
+    Ta clé d'API est personnelle et secrète. Ne la partage pas. Si tu penses qu'elle a été vue par quelqu'un
+    d'autre, régénère-la tout de suite sur la page « Ma clé d'API ».
+</p>
+
+<h2>6. Limites d'utilisation</h2>
+<p>
+    Pour protéger le service et le quota accordé par Google, le nombre d'envois par jour et la taille des vidéos
+    sont limités. YouTube peut aussi appliquer ses propres limites à ta chaîne.
+</p>
+
+<h2>7. Disponibilité</h2>
+<p>
+    Nous faisons de notre mieux pour que le service fonctionne, sans garantie. Un envoi peut échouer, par
+    exemple si YouTube le refuse. Garde toujours une copie de tes vidéos.
+</p>
+
+<h2>8. Responsabilité</h2>
+<p>[À rédiger avec un professionnel : limites de responsabilité de l'éditeur.]</p>
+
+<h2>9. Suspension et suppression</h2>
+<p>
+    Tu peux supprimer ton compte à tout moment. Nous pouvons suspendre un compte qui ne respecte pas ces
+    conditions ou les règles de YouTube.
+</p>
+
+<h2>10. Modifications et droit applicable</h2>
+<p>
+    Nous pouvons modifier ces conditions ; la date en haut de la page indique la dernière version.
+    Droit applicable : [province ou pays].
+</p>
+
+<p>Contact : <a href="mailto:sambademblee40@outlook.fr">sambademblee40@outlook.fr</a></p>
+<p><a href="{% url 'login' %}">Retour au site</a></p>
+{% endblock %}
