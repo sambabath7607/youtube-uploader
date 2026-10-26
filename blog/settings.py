@@ -43,6 +43,7 @@ INSTALLED_APPS = [
 
     #mes app
 
+    'accounts',
     'youtube_uploader',
     "rest_framework",
     "rest_framework.authtoken",
@@ -65,7 +66,7 @@ ROOT_URLCONF = 'blog.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR, 'template' , ],
+        'DIRS': [BASE_DIR / "template"],  # le dossier src/template/, quel que soit le dossier de lancement
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [

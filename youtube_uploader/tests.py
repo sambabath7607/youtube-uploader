@@ -146,3 +146,39 @@ class DeconnecterYoutubeTests(TestCase):
         reponse = self.client.get(reverse("deconnecter_youtube"))
         self.assertEqual(reponse.status_code, 405)
         self.assertTrue(YouTubeCredentials.objects.filter(user=self.user).exists())
+
+
+class RetourGoogleTests(TestCase):
+    """Le retour de Google (oauth_callback) affiche un message clair au lieu d'une erreur 500."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username="samba", password="motdepasse123")
+        self.client.force_login(self.user)
+        self.url = reverse("oauth_callback")
+
+    def test_connexion_annulee_chez_google(self):
+        reponse = self.client.get(self.url + "?error=access_denied", follow=True)
+        self.assertContains(reponse, "Connexion annulée")
+        self.assertFalse(YouTubeCredentials.objects.filter(user=self.user).exists())
+
+    def test_lien_invalide_sans_etat(self):
+        reponse = self.client.get(self.url + "?code=abc&state=xyz", follow=True)
+        self.assertContains(reponse, "Lien de connexion invalide")
+
+    @patch("youtube_uploader.oauth.creer_flow")
+    def test_google_refuse_le_code(self, creer_flow):
+        creer_flow.return_value.fetch_token.side_effect = Exception("invalid_grant")
+        session = self.client.session
+        session["oauth_state"] = "xyz"
+        session.save()
+        reponse = self.client.get(self.url + "?code=abc&state=xyz", follow=True)
+        self.assertContains(reponse, "pas pu confirmer la connexion")
+        self.assertNotIn("oauth_state", self.client.session)
+        self.assertFalse(YouTubeCredentials.objects.filter(user=self.user).exists())
+
+
+class EnvoiSansUtilisateurTests(TestCase):
+    def test_plus_d_envoi_avec_le_fichier_token_json(self):
+        from .upload import upload_video
+        with self.assertRaises(ValueError):
+            upload_video("video.mp4", "Titre")

@@ -40,13 +40,29 @@ def connecter_youtube(request):
 
 @login_required
 def oauth_callback(request):
-    flow = creer_flow(state=request.session.get("oauth_state"))
-    flow.code_verifier = request.session.get("code_verifier")
-    flow.fetch_token(authorization_response=request.build_absolute_uri())
+    # L'utilisateur a cliqué sur « Annuler » chez Google : Google renvoie ?error=access_denied
+    if request.GET.get("error"):
+        messages.warning(request, "Connexion annulée : ta chaîne YouTube n'a pas été connectée.")
+        return redirect("accueil")
+    if not request.session.get("oauth_state") or not request.GET.get("code"):
+        messages.error(request, "Lien de connexion invalide ou expiré. Clique à nouveau sur « Connecter ma chaîne ».")
+        return redirect("accueil")
+    try:
+        flow = creer_flow(state=request.session.get("oauth_state"))
+        flow.code_verifier = request.session.get("code_verifier")
+        flow.fetch_token(authorization_response=request.build_absolute_uri())
+    except Exception:
+        # Pas de détail technique affiché (ni enregistré avec un token) : seulement un message clair
+        messages.error(request, "Google n'a pas pu confirmer la connexion. Réessaie dans un instant.")
+        return redirect("accueil")
+    finally:
+        request.session.pop("oauth_state", None)
+        request.session.pop("code_verifier", None)
     YouTubeCredentials.objects.update_or_create(
         user=request.user,
         defaults={"token_json": chiffrer(flow.credentials.to_json())},
     )
+    messages.success(request, "Ta chaîne YouTube est connectée.")
     return redirect("accueil")
 
 
