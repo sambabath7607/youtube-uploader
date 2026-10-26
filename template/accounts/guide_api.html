@@ -17,20 +17,21 @@
 <pre>setx YOUTUBE_API_KEY "TA_CLE"</pre>
 
 <h2>3. Envoyer une vidéo</h2>
-<pre>curl.exe -X POST http://127.0.0.1:8000/youtube/api/v1/videos/ -H "Authorization: Token TA_CLE" -F "fichier=@video.mp4" -F "titre=Ma vidéo" -F "pour_enfants=false"</pre>
+<pre>curl.exe -X POST https://api.batchcodeia.com/youtube/api/v1/videos/ -H "Authorization: Token TA_CLE" -F "fichier=@video.mp4" -F "titre=Ma vidéo" -F "pour_enfants=false" -F "contenu_ia=false"</pre>
 <ul>
     <li><strong>fichier</strong> : ta vidéo (obligatoire).</li>
     <li><strong>titre</strong> : le titre sur YouTube (obligatoire).</li>
     <li><strong>pour_enfants</strong> : true ou false (obligatoire, c'est une règle de YouTube).</li>
+    <li><strong>contenu_ia</strong> : true si la vidéo contient des scènes réalistes générées ou modifiées par IA, sinon false.</li>
 </ul>
 <p>L'API répond tout de suite avec le code 202 et un numéro de vidéo. L'envoi vers YouTube continue en arrière-plan.</p>
 
 <h2>4. Suivre l'état de l'envoi</h2>
-<pre>curl.exe http://127.0.0.1:8000/youtube/api/v1/videos/NUMERO/ -H "Authorization: Token TA_CLE"</pre>
+<pre>curl.exe https://api.batchcodeia.com/youtube/api/v1/videos/NUMERO/ -H "Authorization: Token TA_CLE"</pre>
 <p>Le champ « etat » indique où en est l'envoi. Si l'envoi échoue, le champ « erreur » explique pourquoi.</p>
 
 <h2>5. Voir la liste de tes vidéos</h2>
-<pre>curl.exe http://127.0.0.1:8000/youtube/api/v1/videos/ -H "Authorization: Token TA_CLE"</pre>
+<pre>curl.exe https://api.batchcodeia.com/youtube/api/v1/videos/ -H "Authorization: Token TA_CLE"</pre>
 <p>La liste affiche 20 vidéos par page. Ajoute ?page=2 à l'adresse pour voir la suite.</p>
 
 <h2>6. Utiliser Claude Code</h2>

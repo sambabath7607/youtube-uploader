@@ -125,6 +125,13 @@ Après
 - Me donner les commandes pour tester moi-même, une action à la fois.
 - Ne jamais dire que c'est terminé sans l'avoir vérifié.
 
+## Créer et publier une vidéo (sans étape manuelle)
+Quand l'utilisateur demande de créer une vidéo et de la publier :
+1. Crée l'animation (par exemple avec Remotion) et fabrique le fichier mp4, par exemple : npx remotion render <id> out/video.mp4
+2. Pose les deux questions obligatoires ci-dessous.
+3. Envoie toi-même le fichier avec la commande « Envoyer une vidéo », sans demander à l'utilisateur de le faire.
+4. Suis l'envoi jusqu'à « reussi » ou « echoue », puis donne le lien https://youtu.be/YOUTUBE_ID.
+
 ## Envoi de vidéos par l'API
 RÈGLE OBLIGATOIRE : avant chaque envoi, demande à l'utilisateur :
 1. « Cette vidéo est-elle conçue pour les enfants ? (oui / non) »
@@ -132,17 +139,17 @@ RÈGLE OBLIGATOIRE : avant chaque envoi, demande à l'utilisateur :
 Attends ses réponses. Ne choisis jamais à sa place, même pour un test.
 (L'API refuse d'ailleurs un envoi sans pour_enfants : erreur 400.)
 
-Envoyer une vidéo — POST /youtube/api/v1/videos/ (le serveur Django doit être lancé) :
-curl -X POST http://127.0.0.1:8000/youtube/api/v1/videos/ -H "Authorization: Token $YOUTUBE_API_KEY" -F "titre=TITRE" -F "description=DESCRIPTION" -F "pour_enfants=REPONSE_DE_L_UTILISATEUR" -F "fichier=@CHEMIN_DE_LA_VIDEO"
-- Champs : titre (obligatoire, 100 caractères max), description (facultatif), pour_enfants (true/false, obligatoire), fichier (mp4, mov ou webm, 500 Mo max).
+Envoyer une vidéo — POST /youtube/api/v1/videos/ (site en ligne : https://api.batchcodeia.com) :
+curl -X POST https://api.batchcodeia.com/youtube/api/v1/videos/ -H "Authorization: Token $YOUTUBE_API_KEY" -F "titre=TITRE" -F "description=DESCRIPTION" -F "pour_enfants=REPONSE_1" -F "contenu_ia=REPONSE_2" -F "fichier=@CHEMIN_DE_LA_VIDEO"
+- Champs : titre (obligatoire, 100 caractères max), description (facultatif), pour_enfants (true/false, réponse 1, obligatoire), contenu_ia (true/false, réponse 2), fichier (mp4, mov ou webm, 500 Mo max).
 - Réponse 202 : {"id": 7, "titre": "...", "description": "...", "pour_enfants": false, "etat": "en_attente", "youtube_id": "", "erreur": "", "created_at": "..."}
 
 Suivre un envoi — GET /youtube/api/v1/videos/ID/ :
-curl http://127.0.0.1:8000/youtube/api/v1/videos/ID/ -H "Authorization: Token $YOUTUBE_API_KEY"
+curl https://api.batchcodeia.com/youtube/api/v1/videos/ID/ -H "Authorization: Token $YOUTUBE_API_KEY"
 Répète au maximum une fois toutes les 10 secondes, jusqu'à ce que "etat" vaille "reussi" ou "echoue", puis donne le résultat à l'utilisateur.
 
 Lister mes vidéos — GET /youtube/api/v1/videos/ (20 par page, ?page=2 pour la suite) :
-curl http://127.0.0.1:8000/youtube/api/v1/videos/ -H "Authorization: Token $YOUTUBE_API_KEY"
+curl https://api.batchcodeia.com/youtube/api/v1/videos/ -H "Authorization: Token $YOUTUBE_API_KEY"
 Réponse 200 : {"count": 12, "next": "...", "previous": null, "results": [ ... ]}
 Avant un envoi, vérifie dans cette liste qu'une vidéo avec le même titre n'a pas déjà été envoyée.
 
