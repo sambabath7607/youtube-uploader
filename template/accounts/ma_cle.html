@@ -6,29 +6,40 @@
 
 <p>Cette clé permet à Claude Code d'envoyer des vidéos sur ta chaîne. Ne la partage avec personne.</p>
 
-<label for="cle">Ta clé :</label>
-<input type="text" id="cle" value="{{ token.key }}" readonly size="45">
+{% if nouvelle_cle %}
+<p><strong>Copie-la maintenant : elle ne sera plus jamais affichée.</strong></p>
+<label for="cle">Ta nouvelle clé :</label>
+<input type="text" id="cle" value="{{ nouvelle_cle }}" readonly size="45">
 <button type="button" id="copier">Copier</button>
 <span id="copie-ok" hidden>Clé copiée.</span>
 
+<p>Mets-la à jour sur ton ordinateur :</p>
+<pre>setx YOUTUBE_API_KEY "NOUVELLE_CLE"</pre>
+{% elif cle %}
+<p>Ta clé actuelle commence par <code>{{ cle.debut }}…</code> (créée le {{ cle.created_at|date:"j F Y" }}).
+Elle n'est plus affichée en entier : si tu l'as perdue, crée une nouvelle clé.</p>
+{% else %}
+<p>Tu n'as pas encore de clé.</p>
+{% endif %}
+
 <form method="post" action="{% url 'ma_cle' %}" id="form-regenerer">
     {% csrf_token %}
-    <button type="submit">Régénérer la clé</button>
+    <button type="submit">Créer une nouvelle clé</button>
 </form>
-
-<p>Après avoir régénéré la clé, mets-la à jour sur ton ordinateur :</p>
-<pre>setx YOUTUBE_API_KEY "NOUVELLE_CLE"</pre>
 
 <p><a href="{% url 'accueil' %}">Retour à l'accueil</a></p>
 
 <script>
-    document.getElementById("copier").addEventListener("click", function () {
-        navigator.clipboard.writeText(document.getElementById("cle").value).then(function () {
-            document.getElementById("copie-ok").hidden = false;
+    var boutonCopier = document.getElementById("copier");
+    if (boutonCopier) {
+        boutonCopier.addEventListener("click", function () {
+            navigator.clipboard.writeText(document.getElementById("cle").value).then(function () {
+                document.getElementById("copie-ok").hidden = false;
+            });
         });
-    });
+    }
     document.getElementById("form-regenerer").addEventListener("submit", function (e) {
-        if (!confirm("L'ancienne clé ne marchera plus. Continuer ?")) {
+        if ({% if cle %}!confirm("L'ancienne clé ne marchera plus. Continuer ?"){% else %}false{% endif %}) {
             e.preventDefault();
         }
     });

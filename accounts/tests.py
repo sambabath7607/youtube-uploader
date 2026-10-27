@@ -4,9 +4,9 @@ from unittest.mock import patch
 from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
-from rest_framework.authtoken.models import Token
 
 from youtube_uploader.models import Video, YouTubeCredentials
+from .models import CleApi, empreinte
 
 
 class MaCleTests(TestCase):
@@ -18,20 +18,33 @@ class MaCleTests(TestCase):
         self.assertEqual(reponse.status_code, 302)
         self.assertIn(reverse("login"), reponse.url)
 
-    def test_utilisateur_connecte_voit_sa_cle(self):
+    def test_cle_existante_jamais_affichee_en_entier(self):
+        cle = CleApi.creer_pour(self.user)
         self.client.login(username="test", password="motdepasse123")
         reponse = self.client.get(reverse("ma_cle"))
-        token = Token.objects.get(user=self.user)
         self.assertEqual(reponse.status_code, 200)
-        self.assertContains(reponse, token.key)
+        self.assertContains(reponse, cle[:8])
+        self.assertNotContains(reponse, cle)
 
-    def test_regenerer_remplace_la_cle(self):
+    def test_nouvelle_cle_affichee_une_seule_fois(self):
         self.client.login(username="test", password="motdepasse123")
-        ancienne = Token.objects.create(user=self.user).key
         reponse = self.client.post(reverse("ma_cle"))
-        self.assertRedirects(reponse, reverse("ma_cle"))
-        nouvelle = Token.objects.get(user=self.user).key
-        self.assertNotEqual(ancienne, nouvelle)
+        cle = reponse.context["nouvelle_cle"]
+        self.assertContains(reponse, cle)
+        self.assertNotContains(self.client.get(reverse("ma_cle")), cle)
+
+    def test_nouvelle_cle_remplace_l_ancienne(self):
+        self.client.login(username="test", password="motdepasse123")
+        ancienne = CleApi.creer_pour(self.user)
+        self.client.post(reverse("ma_cle"))
+        self.assertEqual(CleApi.objects.filter(user=self.user).count(), 1)
+        self.assertFalse(CleApi.objects.filter(empreinte=empreinte(ancienne)).exists())
+
+    def test_la_base_ne_contient_jamais_la_cle(self):
+        cle = CleApi.creer_pour(self.user)
+        ligne = CleApi.objects.get(user=self.user)
+        self.assertNotIn(cle, [ligne.empreinte, ligne.debut])
+        self.assertEqual(ligne.empreinte, empreinte(cle))
 
 
 class InscriptionTests(TestCase):
@@ -44,6 +57,12 @@ class InscriptionTests(TestCase):
     def test_inscription_avec_les_deux_cases(self):
         self.client.post(reverse("inscription"), self.donnees())
         self.assertTrue(User.objects.filter(username="nouveau").exists())
+
+    def test_inscription_mene_a_l_accueil_connecte(self):
+        reponse = self.client.post(reverse("inscription"), self.donnees(), follow=True)
+        self.assertRedirects(reponse, reverse("accueil"))
+        self.assertTrue(reponse.context["user"].is_authenticated)
+        self.assertContains(reponse, "Bienvenue")
 
     def test_inscription_refusee_sans_accepter_les_conditions(self):
         self.client.post(reverse("inscription"), self.donnees(accepte_conditions=None))
@@ -58,7 +77,7 @@ class DonneesEtSuppressionTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username="samba", password="motdepasse123")
         YouTubeCredentials.objects.create(user=self.user, token_json=json.dumps({"refresh_token": "secret"}))
-        Token.objects.create(user=self.user)
+        self.cle = CleApi.creer_pour(self.user)
         Video.objects.create(user=self.user, titre="Ma vidéo", pour_enfants=False, fichier="")
         self.client.login(username="samba", password="motdepasse123")
 
@@ -70,7 +89,7 @@ class DonneesEtSuppressionTests(TestCase):
         self.assertEqual(donnees["videos"][0]["titre"], "Ma vidéo")
         self.assertTrue(donnees["chaine_youtube_connectee"])
         self.assertNotIn(b"secret", reponse.content)
-        self.assertNotIn(Token.objects.get(user=self.user).key.encode(), reponse.content)
+        self.assertNotIn(self.cle.encode(), reponse.content)
 
     @patch("accounts.views.revoquer_token_google")
     def test_suppression_avec_mauvais_mot_de_passe(self, revoquer):
@@ -85,7 +104,7 @@ class DonneesEtSuppressionTests(TestCase):
         revoquer.assert_called_once()
         self.assertFalse(User.objects.filter(username="samba").exists())
         self.assertFalse(YouTubeCredentials.objects.exists())
-        self.assertFalse(Token.objects.exists())
+        self.assertFalse(CleApi.objects.exists())
         self.assertFalse(Video.objects.exists())
 
 
@@ -102,3 +121,8 @@ class PagesPubliquesTests(TestCase):
         reponse = self.client.get(reverse("accueil"))
         for nom in ["ma_cle", "mes_donnees", "supprimer_compte", "nouvelle_video", "conditions", "confidentialite"]:
             self.assertContains(reponse, reverse(nom))
+
+    def test_style_servi_par_le_site_sans_cdn(self):
+        reponse = self.client.get(reverse("conditions"))
+        self.assertContains(reponse, "css/pico-2.1.1.min.css")
+        self.assertNotContains(reponse, "cdn.jsdelivr.net")

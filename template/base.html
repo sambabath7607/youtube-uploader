@@ -6,8 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="{% block description %}Envoie tes vidéos sur ta chaîne YouTube depuis le site ou par une API, avec Claude Code.{% endblock %}">
     <title>{% block titre %}YouTube Uploader{% endblock %}</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <link rel="stylesheet" href="{% static 'css/pico-2.1.1.min.css' %}">
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    {% block entete %}{% endblock %}
 </head>
 <body>
     <header class="container">

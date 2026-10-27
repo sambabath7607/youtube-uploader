@@ -88,6 +88,8 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
+        # Attendre jusqu'à 20 s au lieu d'échouer avec « database is locked » quand deux écritures se croisent
+        'OPTIONS': {"timeout": 20, "transaction_mode": "IMMEDIATE"},
     }
 }
 
@@ -134,11 +136,8 @@ STATIC_ROOT = BASE_DIR / "staticfiles"  # dossier où collectstatic copie le CSS
 # Email
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
 
-MAILERS = {
-    'default': {
-        'BACKEND': 'django.core.mail.backends.console.EmailBackend',
-    },
-}
+# Courriels : affichés dans le terminal (le site n'en envoie pas encore ; à remplacer par un vrai serveur SMTP le jour venu)
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 LOGIN_REDIRECT_URL = "accueil"
 LOGIN_URL = 'login'
 LOGOUT_REDIRECT_URL = "login"
@@ -151,3 +150,22 @@ MEDIA_URL = "/media/"
 
 
 REST_FRAMEWORK = {"EXCEPTION_HANDLER": "youtube_uploader.erreurs.gestionnaire_erreurs_api"}
+
+# --- Production (DEBUG=False) : site derrière Nginx en HTTPS ---
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")   # Nginx indique que la visite est en HTTPS
+    SECURE_SSL_REDIRECT = True                                      # http:// → https://
+    SESSION_COOKIE_SECURE = True                                    # cookies envoyés seulement en HTTPS
+    CSRF_COOKIE_SECURE = True
+    CSRF_TRUSTED_ORIGINS = [f"https://{hote}" for hote in ALLOWED_HOSTS if hote]
+    SECURE_HSTS_SECONDS = 60 * 60 * 24 * 30                         # le navigateur reste en HTTPS pendant 30 jours
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_REFERRER_POLICY = "same-origin"
+
+# Journal : les erreurs du site s'affichent dans la console (sur le serveur : sudo journalctl -u youtube-uploader)
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {"console": {"class": "logging.StreamHandler"}},
+    "root": {"handlers": ["console"], "level": "WARNING"},
+}

@@ -26,7 +26,7 @@
 - Ne jamais afficher, copier ni modifier client_secret_web.json, token.json ou YOUTUBE_API_KEY.
 - Aucun secret dans le code ni sur GitHub : variables d'environnement, et fichiers secrets dans .gitignore.
 - Tokens Google uniquement en base (YouTubeCredentials), chiffrés avant la mise en ligne, jamais dans un fichier ni dans les logs.
-- Clés d'API : l'utilisateur peut les voir et les régénérer ; ne jamais les afficher dans les logs.
+- Clés d'API : seule l'empreinte (SHA-256) est en base ; l'utilisateur voit sa clé une seule fois, à sa création, et peut en créer une nouvelle ; ne jamais les afficher dans les logs.
 
 ## Règles YouTube et Google (conditions de l'API)
 - Respecter les Conditions d'utilisation des services d'API YouTube, les Règles du programme pour les développeurs YouTube et le Règlement Google sur les données utilisateur des services d'API (usage limité).
@@ -82,7 +82,7 @@ Expérience utilisateur
 - Messages clairs en français : succès en vert, erreur en rouge, avec une explication et la solution.
 - Montrer l'état des envois avec un badge coloré (en attente, en cours, réussi, échoué).
 - Bouton désactivé avec « Envoi en cours… » pendant un envoi, pour éviter les doubles clics.
-- Demander une confirmation avant une action irréversible (régénérer la clé, supprimer le compte).
+- Demander une confirmation avant une action irréversible (créer une nouvelle clé, supprimer le compte).
 - Bouton « Copier » à côté de la clé d'API.
 
 ## Règles de l'API
@@ -155,7 +155,7 @@ Avant un envoi, vérifie dans cette liste qu'une vidéo avec le même titre n'a 
 
 Erreurs possibles : {"erreur": "message", "code": "nom_court"}
 - 400 donnees_invalides (détail dans "details"), 400 youtube_non_connecte : l'utilisateur doit connecter sa chaîne sur le site.
-- 401 : clé absente ou fausse (vérifier YOUTUBE_API_KEY, ou la régénérer sur /ma-cle/).
+- 401 : clé absente ou fausse (vérifier YOUTUBE_API_KEY, ou en créer une nouvelle sur /ma-cle/).
 - 404 video_introuvable.
 - 429 limite_envois_atteinte (5 envois par jour) ou trop de requêtes (60 par minute) : s'arrêter et prévenir l'utilisateur.
 - "etat": "echoue" avec uploadLimitExceeded ou quotaExceeded dans "erreur" : s'arrêter, ne pas relancer, prévenir l'utilisateur.

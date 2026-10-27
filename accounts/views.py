@@ -3,11 +3,11 @@ from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.shortcuts import render, redirect
-from rest_framework.authtoken.models import Token
 
 from youtube_uploader.models import Video, YouTubeCredentials
 from youtube_uploader.oauth import revoquer_token_google
 from .forms import InscriptionForm
+from .models import CleApi
 
 
 @login_required
@@ -21,7 +21,8 @@ def inscription(request):
         if form.is_valid():
             user = form.save()
             login(request, user)
-            return redirect("login")
+            messages.success(request, "Bienvenue ! Ton compte est créé. Connecte maintenant ta chaîne YouTube.")
+            return redirect("accueil")
     else:
         form = InscriptionForm()
     return render(request, "accounts/inscription.html", {"form": form})
@@ -29,13 +30,12 @@ def inscription(request):
 
 @login_required
 def ma_cle(request):
+    nouvelle_cle = None
     if request.method == "POST":
-        # Régénérer : l'ancienne clé est supprimée, une nouvelle est créée
-        Token.objects.filter(user=request.user).delete()
-        Token.objects.create(user=request.user)
-        return redirect("ma_cle")
-    token, created = Token.objects.get_or_create(user=request.user)
-    return render(request, "accounts/ma_cle.html", {"token": token})
+        # Créer une nouvelle clé : l'ancienne ne marche plus ; la nouvelle est affichée une seule fois
+        nouvelle_cle = CleApi.creer_pour(request.user)
+    cle = CleApi.objects.filter(user=request.user).first()
+    return render(request, "accounts/ma_cle.html", {"cle": cle, "nouvelle_cle": nouvelle_cle})
 
 
 @login_required

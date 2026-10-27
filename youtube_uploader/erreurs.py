@@ -1,4 +1,7 @@
 from rest_framework.views import exception_handler
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Messages clairs pour les erreurs connues de YouTube.
 # Le nom de l'erreur reste entre parenthèses, pour que Claude Code la reconnaisse.
@@ -17,19 +20,26 @@ CODES_HTTP = {
 
 
 def message_erreur(e):
-    """Transforme une erreur d'envoi en message lisible en français."""
+    """Transforme une erreur d'envoi en message lisible en français, sans aucun détail interne.
+    Le détail technique va seulement dans le journal du serveur."""
+    from google.auth.exceptions import RefreshError
     from googleapiclient.errors import HttpError
+    from .chiffrement import JetonIllisible
     from .models import YouTubeCredentials
 
     if isinstance(e, YouTubeCredentials.DoesNotExist):
         return "Aucune chaîne YouTube connectée pour ce compte."
+    if isinstance(e, (RefreshError, JetonIllisible)):
+        # Autorisation expirée (7 jours en mode Test), retirée chez Google, ou jeton illisible en base
+        return "L'autorisation YouTube a expiré ou a été retirée. Reconnecte ta chaîne sur la page d'accueil du site."
     if isinstance(e, HttpError):
         for detail in getattr(e, "error_details", None) or []:
             raison = detail.get("reason") if isinstance(detail, dict) else None
             if raison in MESSAGES_YOUTUBE:
                 return f"{MESSAGES_YOUTUBE[raison]} ({raison})"
         return f"YouTube a refusé l'envoi (code {e.resp.status})."
-    return f"Erreur pendant l'envoi : {e}"
+    logger.error("Envoi YouTube : erreur inattendue", exc_info=e)
+    return "Erreur inattendue pendant l'envoi. Réessaie plus tard ; si le problème continue, contacte le support."
 
 
 def gestionnaire_erreurs_api(exc, context):

@@ -13,7 +13,7 @@ from .models import YouTubeCredentials
 from .upload import DOSSIER, SCOPES
 
 
-from .chiffrement import chiffrer, dechiffrer
+from .chiffrement import JetonIllisible, chiffrer, dechiffrer
 
 if settings.DEBUG:
     os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"  # seulement en local (http), jamais sur le serveur
@@ -68,7 +68,10 @@ def oauth_callback(request):
 
 def revoquer_token_google(ligne):
     """Demande à Google d'annuler l'autorisation. Renvoie True si Google a accepté."""
-    donnees = json.loads(dechiffrer(ligne.token_json))
+    try:
+        donnees = json.loads(dechiffrer(ligne.token_json))
+    except JetonIllisible:
+        return False
     token = donnees.get("refresh_token") or donnees.get("token")
     if not token:
         return False

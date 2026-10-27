@@ -4,7 +4,7 @@ from django.urls import path, include
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("youtube/", include("youtube_uploader.urls")),
-    path("", include("accounts.urls"), name ='accounts'),
+    path("", include("accounts.urls")),
 
 
 ]

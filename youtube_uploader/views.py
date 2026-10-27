@@ -1,37 +1,31 @@
-
-
-from django.shortcuts import render
-from .erreurs import message_erreur
-from .forms import VideoForm
-from .upload import upload_video
-
 from django.contrib.auth.decorators import login_required
+from django.shortcuts import get_object_or_404, redirect, render
 
+from .envois import probleme_avant_envoi
+from .forms import VideoForm
+from .models import Video
 
 
 @login_required
 def nouvelle_video(request):
+    probleme = None
     if request.method == "POST":
         form = VideoForm(request.POST, request.FILES)
-        if form.is_valid():
+        probleme = probleme_avant_envoi(request.user)
+        if probleme is None and form.is_valid():
+            # Rangée « En attente » : le worker youtube-worker l'enverra sur YouTube
             video = form.save(commit=False)
             video.user = request.user
-            video.etat = "en_cours"
             video.save()
-            try:
-                statut = "private"
-                video.youtube_id = upload_video(
-                    video.fichier.path, video.titre, video.description,
-                    "private", user=video.user,
-                    pour_enfants=video.pour_enfants, contenu_ia=video.contenu_ia,
-                )
-                video.etat = "reussi"
-            except Exception as e:
-                video.etat = "echoue"
-                video.erreur = message_erreur(e)
-            video.fichier.delete(save=False)
-            video.save()
-            return render(request, "youtube_uploader/resultat.html", {"video": video})
+            return redirect("suivi_video", video_id=video.id)
     else:
         form = VideoForm()
-    return render(request, "youtube_uploader/nouvelle_video.html", {"form": form})
+    message = probleme[0] if probleme else None
+    return render(request, "youtube_uploader/nouvelle_video.html", {"form": form, "probleme": message})
+
+
+@login_required
+def suivi_video(request, video_id):
+    # La vidéo d'un autre utilisateur répond 404
+    video = get_object_or_404(Video, id=video_id, user=request.user)
+    return render(request, "youtube_uploader/resultat.html", {"video": video})

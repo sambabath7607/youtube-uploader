@@ -2,8 +2,11 @@
 {% block titre %}Envoyer une vidéo{% endblock %}
 
 {% block contenu %}
-        <h1>Envoyer une vidéo</h1>
-     <form method="post" enctype="multipart/form-data">
+<h1>Envoyer une vidéo</h1>
+{% if probleme %}
+    <p role="alert">{{ probleme }}</p>
+{% endif %}
+<form method="post" enctype="multipart/form-data">
     {% csrf_token %}
     {{ form.as_p }}
     <button type="submit">Envoyer</button>

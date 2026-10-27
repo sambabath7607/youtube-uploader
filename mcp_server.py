@@ -11,6 +11,7 @@ claude mcp add --transport http youtube-uploader https://api.batchcodeia.com/mcp
 import contextvars
 import ipaddress
 import json
+import logging
 import os
 import socket
 import tempfile
@@ -21,12 +22,18 @@ import requests
 import uvicorn
 from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
+from requests.adapters import HTTPAdapter
+from urllib3.connection import HTTPConnection, HTTPSConnection
+from urllib3.connectionpool import HTTPConnectionPool, HTTPSConnectionPool
 
 load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
 
 ADRESSE_API = os.environ.get("MCP_ADRESSE_API", "https://api.batchcodeia.com/youtube/api/v1/videos/")
 TAILLE_MAX = 500 * 1024 * 1024
 HOTE, PORT = "127.0.0.1", 8100
+MESSAGE_CONNEXION = "Problème de connexion. Réessaie dans un instant."
+
+logger = logging.getLogger("mcp_server")
 
 # Clé de l'utilisateur de la requête en cours (remplie par VerifierCle)
 cle_courante = contextvars.ContextVar("cle_courante", default=None)
@@ -75,12 +82,78 @@ def adresse_autorisee(url):
     return True
 
 
+class AdresseInterdite(ConnectionError):
+    pass
+
+
+class SeulementPublique:
+    """Vérifie l'adresse IP réellement connectée (pas une 2e réponse du DNS) avant tout envoi."""
+
+    def _new_conn(self):
+        sock = super()._new_conn()
+        if not ipaddress.ip_address(sock.getpeername()[0]).is_global:
+            sock.close()
+            raise AdresseInterdite("adresse interne refusée")
+        return sock
+
+
+class ConnexionHttp(SeulementPublique, HTTPConnection):
+    pass
+
+
+class ConnexionHttps(SeulementPublique, HTTPSConnection):
+    pass
+
+
+class PoolHttp(HTTPConnectionPool):
+    ConnectionCls = ConnexionHttp
+
+
+class PoolHttps(HTTPSConnectionPool):
+    ConnectionCls = ConnexionHttps
+
+
+class AdaptateurPublic(HTTPAdapter):
+    def init_poolmanager(self, *args, **kwargs):
+        super().init_poolmanager(*args, **kwargs)
+        self.poolmanager.pool_classes_by_scheme = {"http": PoolHttp, "https": PoolHttps}
+
+
+def causes(erreur):
+    """L'erreur et toutes celles qui l'ont provoquée (requests enveloppe l'erreur de urllib3)."""
+    vues, a_voir = set(), [erreur]
+    while a_voir:
+        e = a_voir.pop()
+        if not isinstance(e, BaseException) or id(e) in vues:
+            continue
+        vues.add(id(e))
+        yield e
+        a_voir += [e.__cause__, e.__context__, getattr(e, "reason", None), *e.args]
+
+
+def session_de_telechargement():
+    session = requests.Session()
+    session.trust_env = False                 # ignore HTTP_PROXY / HTTPS_PROXY
+    session.mount("http://", AdaptateurPublic())
+    session.mount("https://", AdaptateurPublic())
+    return session
+
+
 def telecharger(url, fichier):
     """Télécharge la vidéo dans le fichier temporaire. Renvoie un message d'erreur, ou None."""
+    session = session_de_telechargement()
     for _ in range(4):  # suit au plus 3 redirections, en vérifiant chaque adresse
         if not adresse_autorisee(url):
             return "Lien refusé : il doit être public (http ou https)."
-        with requests.get(url, stream=True, timeout=60, allow_redirects=False) as reponse:
+        try:
+            reponse = session.get(url, stream=True, timeout=60, allow_redirects=False)
+        except requests.ConnectionError as e:
+            # L'adresse réellement connectée était interne (DNS rebinding) : refus
+            if any(isinstance(cause, AdresseInterdite) for cause in causes(e)):
+                logger.warning("Téléchargement refusé : adresse interne derrière %s", urlparse(url).hostname)
+                return "Lien refusé : il doit être public (http ou https)."
+            raise
+        with reponse:
             if reponse.status_code in (301, 302, 303, 307, 308) and reponse.headers.get("Location"):
                 url = urljoin(url, reponse.headers["Location"])
                 continue
@@ -117,16 +190,18 @@ def envoyer(cle, url_video, titre, description, pour_enfants, contenu_ia):
                 files={"fichier": (f"video{extension}", fichier)},
                 timeout=300,
             )
-    except requests.RequestException as e:
-        return {"erreur": f"Problème de connexion : {e}"}
+    except requests.RequestException:
+        logger.exception("Envoi vers l'API : problème de connexion")
+        return {"erreur": MESSAGE_CONNEXION}
     return lire_reponse(reponse)
 
 
 def lire(cle, url, params=None):
     try:
         return lire_reponse(requests.get(url, headers=entetes(cle), params=params, timeout=30))
-    except requests.RequestException as e:
-        return {"erreur": f"Problème de connexion : {e}"}
+    except requests.RequestException:
+        logger.exception("Lecture de l'API : problème de connexion")
+        return {"erreur": MESSAGE_CONNEXION}
 
 
 # ---------- outils visibles par Claude ----------
