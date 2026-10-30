@@ -1,4 +1,5 @@
 """Tests du connecteur MCP (mcp_server.py) : téléchargement des vidéos seulement depuis une adresse publique."""
+import asyncio
 import http.server
 import tempfile
 import threading
@@ -71,3 +72,31 @@ class TelechargementTests(SimpleTestCase):
         with self.assertLogs("mcp_server", level="ERROR"):
             reponse = mcp_server.lire("Token abc", "https://exemple.com/")
         self.assertEqual(reponse, {"erreur": mcp_server.MESSAGE_CONNEXION})
+
+
+@unittest.skipUnless(MCP_INSTALLE, "paquet mcp absent (installé seulement sur le serveur)")
+class VerifierCleTests(SimpleTestCase):
+    """La clé peut arriver dans Authorization (Claude Code) ou dans X-API-Key (claude.ai)."""
+
+    def appeler(self, entetes):
+        recu, envoye = {}, []
+
+        async def application(scope, receive, send):
+            recu["cle"] = mcp_server.cle_courante.get()
+
+        async def envoyer(message):
+            envoye.append(message)
+
+        scope = {"type": "http", "headers": [(nom.encode(), valeur.encode()) for nom, valeur in entetes]}
+        asyncio.run(mcp_server.VerifierCle(application)(scope, None, envoyer))
+        statut = envoye[0]["status"] if envoye else 200
+        return statut, recu.get("cle")
+
+    def test_cle_dans_x_api_key_acceptee(self):
+        self.assertEqual(self.appeler([("x-api-key", "a" * 40)]), (200, "Token " + "a" * 40))
+
+    def test_cle_dans_authorization_toujours_acceptee(self):
+        self.assertEqual(self.appeler([("authorization", "Token " + "b" * 40)]), (200, "Token " + "b" * 40))
+
+    def test_sans_cle_refuse(self):
+        self.assertEqual(self.appeler([]), (401, None))

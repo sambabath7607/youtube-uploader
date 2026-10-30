@@ -79,7 +79,7 @@ Partie 22 : correction de toutes les mauvaises pratiques. Partie 23 : envoi dire
 
 ---
 
-## Partie 22 : Correction des mauvaises pratiques (en cours)
+## Partie 22 : Correction des mauvaises pratiques (terminée, 27 octobre 2026)
 
 Règle décidée : tout ce qui n'est pas une bonne pratique est corrigé maintenant, rien n'est laissé « pour plus tard ».
 Liste : 1 settings.py (sécurité HTTPS, courriels, journal, SQLite) · 2 messages d'erreur sans détail interne ·
@@ -224,3 +224,136 @@ Avant la mise en ligne : vérifier que Nginx envoie `X-Forwarded-Proto` (sinon S
 - Piège rencontré : une commande `sed` qui AJOUTE du texte, lancée plusieurs fois, l'ajoute plusieurs fois
   (--control-socket s'est retrouvé 3 fois). Corrigé en remplaçant toute la ligne ExecStart. Pour le serveur,
   préférer des commandes qui donnent le même résultat même lancées deux fois.
+
+### Mise en ligne de la Partie 22 (terminée, 27 octobre 2026)
+Commit dbc0dce. Sur le serveur, dans ~/youtube-uploader avec .venv activé, une commande à la fois :
+```
+sudo grep -Rn "X-Forwarded-Proto" /etc/nginx/sites-enabled/   # -R (majuscule) : suit les liens de sites-enabled
+cat /etc/nginx/proxy_params                                      # contient X-Forwarded-Proto $scheme → pas de boucle
+cp db.sqlite3 ~/db_youtube_avant-partie22_$(date +%F).sqlite3    # sauvegarde (164 Ko)
+git pull origin main                                             # f0f10a7..dbc0dce
+python manage.py check                                           # aucun problème
+python manage.py migrate                                         # accounts 0001 et 0002 OK
+# → 1 clé hachée, 0 clé en clair
+python manage.py collectstatic --noinput                         # pico-2.1.1.min.css copié
+DJANGO_DEBUG=True python manage.py test                          # 52 tests OK, aucun sauté (tests MCP inclus)
+printf '%s\n' ... | sudo tee /etc/systemd/system/youtube-worker.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now youtube-worker                       # NRestarts=0
+sudo systemctl restart youtube-uploader
+sudo systemctl restart youtube-mcp
+```
+Service youtube-worker : User=batch, Group=www-data, WorkingDirectory=/home/batch/youtube-uploader,
+ExecStart=.venv/bin/python manage.py traiter_envois, Restart=always, RestartSec=5, TimeoutStopSec=600
+(10 min pour finir la vidéo en cours avant l'arrêt).
+
+Vérifications : les 3 services `active` ; https://api.batchcodeia.com/login/ → 200 ; http:// → 301 (pas de boucle) ;
+API sans clé → 401 ; /run/youtube-uploader/ contient gunicorn.ctl et gunicorn.sock ; sur le serveur, seul
+client_secret_web.json reste (pas de token.json ni client_secret.json).
+
+Droits des fichiers sensibles (avant : lisibles par tous, -rw-rw-r-- / -rw-r--r--) :
+```
+chmod 600 ~/youtube-uploader/youtube_uploader/client_secret_web.json ~/youtube-uploader/.env
+chmod 600 ~/youtube-uploader/db.sqlite3 ~/db_youtube_*.sqlite3
+```
+→ tous en -rw------- (seul l'utilisateur batch, qui fait tourner les services) ; site toujours 200.
+Penser à refaire `chmod 600` sur chaque nouvelle sauvegarde de la base.
+
+Style du site disparu après la mise en ligne (corrigé le 27 octobre 2026) :
+- Cause : /home/batch était en drwxr-x--- ; Nginx (compte www-data) ne pouvait pas entrer dans le dossier →
+  403 sur /static/ (journal Nginx : « (13: Permission denied) »). Le problème existait depuis le début pour style.css,
+  mais était caché parce que Pico venait de jsDelivr ; la correction 6 (Pico servi par le site) l'a fait apparaître.
+- Avant d'ouvrir le passage, recherche des fichiers sensibles lisibles par tous (find … -perm -o=r) : 13 trouvés
+  (.env de batchcodeia et de ~, bases et sauvegardes de batchcodeia, batchcodeia.service.bak).
+- Correction :
+```
+chmod o+x /home/batch                              # passage seulement (drwxr-x--x), pas de liste du contenu
+chmod 600 <les fichiers sensibles>                 # .env, *.sqlite3, sauvegardes
+sudo chown batch:batch ~/batchcodeia.service.bak && chmod 600 ~/batchcodeia.service.bak   # créé par sudo cp → root
+chmod 700 ~/backup_batchcodeia
+```
+- Vérifié : CSS → 200, plus aucun fichier sensible lisible par tous, batchcodeia.com et api.batchcodeia.com → 200.
+- À retenir : toujours protéger les fichiers sensibles AVANT d'ouvrir un dossier ; un fichier créé avec `sudo`
+  appartient à root ; `cmd1 && cmd2` n'exécute pas cmd2 si cmd1 échoue.
+
+### Pièges rencontrés
+- `grep -r` ne suit pas les liens symboliques de /etc/nginx/sites-enabled/ : utiliser `grep -R`.
+- `include proxy_params;` ajoute déjà X-Forwarded-Proto (Ubuntu) : vérifier ce fichier avant de modifier Nginx.
+- Un bloc de plusieurs lignes (heredoc) collé dans le terminal peut ne pas s'exécuter : préférer une commande sur
+  une seule ligne (`printf '%s\n' ... | sudo tee fichier`).
+- Les tests sur le serveur doivent tourner avec `DJANGO_DEBUG=True` (sinon SECURE_SSL_REDIRECT renvoie 301).
+
+### Ensuite
+Test d'envoi réel de bout en bout ; puis Partie 23 (envoi direct depuis Claude sans lien public).
+À faire par Samba : retirer l'ancien accès token.json sur https://myaccount.google.com/permissions.
+
+### Tests réels de bout en bout (28-29 octobre 2026, après la Partie 22)
+- Formulaire du site → worker → YouTube : réussi (vidéo visible dans YouTube Studio).
+- Claude Code → API → worker → YouTube : réussi.
+  - Vidéo fabriquée par Claude avec Remotion (projet Bureau video-batchcodeia, composition CoursPython-YouTube,
+    28 s, 9,6 Mo, out/cours-python-test.mp4), envoyée par curl avec la clé d'API, en privé.
+  - Vidéo n° 2 « Test Claude » : en_attente → reussi en moins de 10 s, youtube_id fcS2WXlwNhw.
+- Pièges : la clé d'API de la base du PC n'existe pas sur le serveur (401) → créer la clé sur
+  https://api.batchcodeia.com/ma-cle/ ; après `setx`, fermer et rouvrir PowerShell ET l'application Claude
+  (sinon l'ancienne valeur reste en mémoire).
+
+---
+
+## Étapes 0 et 1 : lecture des documentations officielles (29 octobre 2026, aucun code modifié)
+
+### Google / YouTube (étape 0)
+Sources : developers.google.com/youtube/v3/docs/videos/insert et guides/quota_and_compliance_audits (mis à jour le
+15 octobre 2026), support.google.com/cloud (13463073, 13464321, 13461325, 15549945), developer-policies.
+- CORRECTION de ce qu'on croyait : « Videos uploaded from unverified API projects are not restricted to private ».
+  Nos vidéos sont privées parce que NOTRE code force `"private"` (api.py / envois.py), pas à cause de Google.
+- CORRECTION du quota : 100 appels `videos.insert` par jour (compteur séparé, 1 unité chacun), pas « environ 6 ».
+  Augmentation : audit via le formulaire « YouTube API Services - Audit and Quota Extension Form »
+  (support.google.com/youtube/contact/yt_api_form).
+- Mode Test (confirmé) : 100 utilisateurs test, autorisation et jeton expirent 7 jours après le consentement.
+- Production non vérifiée : écran « application non vérifiée » et 100 nouveaux utilisateurs AU TOTAL, pour toute
+  la vie du projet (non réinitialisable). → La vérification est obligatoire avant d'ouvrir à des clients.
+- Vérification : page d'accueil publique sur un domaine vérifié (pas seulement une page de connexion), politique de
+  confidentialité liée depuis l'accueil et l'écran de consentement, domaine vérifié dans Google Search Console,
+  vidéo de démonstration (parcours OAuth complet + usage du droit), justification du droit demandé, passer en
+  « Production » puis « Prepare for Verification ». Classement de youtube.upload (sensible ?) : à lire dans la
+  console Google Cloud. Délais : non publiés.
+- Règles YouTube que notre site ne respecte pas encore :
+  - III.C.3 : laisser l'utilisateur CHOISIR la visibilité (publique / non répertoriée / privée) ;
+  - III.C.3 : indiquer la chaîne YouTube concernée par chaque envoi ;
+  - III.E.4 : les données venant de l'API (ex. youtube_id) gardées au plus 30 jours, puis supprimées ou
+    rafraîchies (à analyser) ;
+  - révocation : supprimer les données dans les 7 jours (déjà fait à la déconnexion, à vérifier).
+
+### Claude (étape 1)
+Sources : support.claude.com « Getting started with custom connectors using remote MCP », code.claude.com/docs/en/mcp,
+modelcontextprotocol.io/specification (révisions 2025-06-18 et 2026-07-28).
+- Connecteurs personnalisés : offres Free (1 seul), Pro, Max, Team, Enterprise. Ajout : claude.ai
+  « Customize > Connectors » → « + Add » → « Add custom connector ». Connexion depuis le cloud d'Anthropic
+  (serveur public en HTTPS).
+- Authentification proposée : OAuth (« Use Claude's published identity » recommandé, « Register automatically »,
+  ou client OAuth à soi) OU « Request headers » : une clé fixe envoyée à chaque requête. → Notre connecteur actuel
+  (Authorization: Token …) peut déjà être ajouté dans claude.ai sans PowerShell (à tester).
+- Les connecteurs ajoutés sur claude.ai apparaissent automatiquement dans Claude Code (connexion par abonnement).
+- Claude Code : OAuth des serveurs distants via `/mcp` ou `claude mcp login`, enregistrement automatique (DCR) et
+  Client ID Metadata Documents pris en charge ; passage d'un fichier local à un outil MCP : non documenté
+  → l'adresse d'envoi à usage unique (Partie 23) reste nécessaire.
+- Spécification MCP 2026-07-28 : OAuth 2.1 + PKCE S256 ; métadonnées RFC 9728 (/.well-known/oauth-protected-resource)
+  OBLIGATOIRES ; réponse 401 avec `WWW-Authenticate: Bearer resource_metadata="…"` ; RFC 8414 ou OIDC Discovery ;
+  jeton lié à notre serveur (audience) ; Client ID Metadata Documents recommandés, DCR désormais déconseillé ;
+  paramètre `iss` (RFC 9207) recommandé.
+- Non lus (à faire avant l'étape OAuth) : claude.com/docs/connectors/building et la page sur l'authentification
+  par en-têtes ; l'adresse de retour OAuth exacte de Claude.
+
+---
+
+## Partie 23a : connecteur MCP compatible avec claude.ai (X-API-Key) (30 octobre 2026)
+- Constat : dans claude.ai (« Add custom connector » → « No sign in » → « Request headers »), le nom `Authorization`
+  n'est pas proposé ; les noms disponibles sont du type `x-api-key`. Sans en-tête lisible, notre connecteur refusait,
+  et en mode « Sign in » Claude tentait une connexion OAuth (« Impossible de s'inscrire auprès du service de
+  connexion »), qui n'existe pas encore.
+- mcp_server.py (`VerifierCle`) : si `Authorization` est absent, la clé est lue dans `X-API-Key` et transmise à
+  l'API comme `Token …` (avec ou sans le mot Token). Message 401 : mentionne les deux en-têtes.
+  La casse ne compte pas : uvicorn met les noms d'en-tête en minuscules.
+- Tests : VerifierCleTests (x-api-key accepté, Authorization toujours accepté, sans clé → 401). Vérifiés sur le PC
+  avec des modules factices (7 tests MCP OK) ; `manage.py test` : 55 tests OK (7 sautés sans le paquet mcp).
+- Réglage dans claude.ai : Authentication « No sign in », en-tête `x-api-key`, valeur = la clé seule.

@@ -259,12 +259,18 @@ class VerifierCle:
     async def __call__(self, scope, receive, send):
         if scope["type"] != "http":
             return await self.app(scope, receive, send)
-        valeur = dict(scope.get("headers") or []).get(b"authorization", b"").decode().strip()
+        entetes = dict(scope.get("headers") or [])
+        valeur = entetes.get(b"authorization", b"").decode().strip()
         if valeur.lower().startswith("bearer "):
             valeur = "Token " + valeur[7:].strip()
+        # claude.ai (« Request headers ») ne permet pas Authorization : la clé peut arriver dans X-API-Key
+        if not valeur:
+            cle_x = entetes.get(b"x-api-key", b"").decode().strip()
+            if cle_x:
+                valeur = cle_x if cle_x.lower().startswith("token ") else "Token " + cle_x
         if not valeur.lower().startswith("token ") or len(valeur) < 10:
             corps = json.dumps({
-                "erreur": "Clé d'API manquante. Ajoute l'en-tête « Authorization: Token TA_CLE » (page « Ma clé d'API » du site).",
+                "erreur": "Clé d'API manquante. Ajoute l'en-tête « Authorization: Token TA_CLE » ou « X-API-Key: TA_CLE » (page « Ma clé d'API » du site).",
                 "code": "non_authentifie",
             }).encode()
             await send({"type": "http.response.start", "status": 401,
