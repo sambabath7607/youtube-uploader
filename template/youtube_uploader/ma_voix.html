@@ -10,6 +10,23 @@ même des vidéos d'une heure, sans que tu aies à parler.</p>
 <article>
     <h2>Ta voix est enregistrée ✅</h2>
     <p>Enregistrée le {{ voix.consentement_le|date:"j F Y à H:i" }}.</p>
+    <p>▶ Écouter ma voix enregistrée :</p>
+    <audio controls preload="none" src="{% url 'ecouter_ma_voix' %}"></audio>
+
+    <h3>Tester ma voix</h3>
+    <p>Le site lit une courte phrase avec ta voix, à partir de 3 passages différents de ton enregistrement.
+        Écoute les 3 propositions et choisis celle qui te ressemble le plus.</p>
+    <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="tester">
+        <button type="submit" {% if essais_restants == 0 or essai_en_cours %}disabled{% endif %}>🔊 Tester ma voix</button>
+        <small>{{ essais_restants }} test(s) restant(s) aujourd'hui (non décomptés de tes minutes).</small>
+    </form>
+    <div id="essai" {% if not essai_en_cours %}hidden{% endif %}>
+        <p id="essai-etat" aria-live="polite">⏳ Fabrication des 3 propositions… (1 à 2 minutes)</p>
+        <div id="propositions"></div>
+        <p><small>Aucune ne te ressemble ? Réenregistre ta voix plus bas, dans une pièce calme, micro proche de la bouche.</small></p>
+    </div>
     <p>Option « En ligne » : il te reste <strong>{{ quota_minutes }} min {{ quota_secondes|stringformat:"02d" }} s</strong>
         d'audio ce mois-ci (sur {{ quota_total }} min offertes).</p>
 
@@ -126,6 +143,54 @@ même des vidéos d'une heure, sans que tu aies à parler.</p>
         boutonDemarrer.disabled = false;
         boutonArreter.disabled = true;
     });
+
+    // « Tester ma voix » : la page demande l'état du test toutes les 5 s, puis affiche les 3 propositions
+    var zoneEssai = document.getElementById("essai");
+    function afficherPropositions(propositions) {
+        var zone = document.getElementById("propositions");
+        var jeton = document.querySelector("input[name=csrfmiddlewaretoken]").value;
+        zone.textContent = "";
+        propositions.forEach(function (p, i) {
+            var bloc = document.createElement("div");
+            var titre = document.createElement("p");
+            titre.textContent = "Proposition " + (i + 1) + " (passage à partir de " + p.debut + " s)" +
+                ({{ voix.passage_debut|stringformat:"s" }} === p.debut ? " — choix actuel" : "");
+            var lecteur = document.createElement("audio");
+            lecteur.controls = true;
+            lecteur.src = p.url;
+            var formulaire = document.createElement("form");
+            formulaire.method = "post";
+            [["csrfmiddlewaretoken", jeton], ["action", "choisir"], ["debut", p.debut]].forEach(function (champ) {
+                var entree = document.createElement("input");
+                entree.type = "hidden";
+                entree.name = champ[0];
+                entree.value = champ[1];
+                formulaire.appendChild(entree);
+            });
+            var bouton = document.createElement("button");
+            bouton.type = "submit";
+            bouton.textContent = "✅ C'est ma voix";
+            formulaire.appendChild(bouton);
+            bloc.append(titre, lecteur, formulaire);
+            zone.appendChild(bloc);
+        });
+    }
+    function suivreEssai() {
+        fetch("{% url 'essai_ma_voix' %}").then(function (r) { return r.json(); }).then(function (d) {
+            var etat = document.getElementById("essai-etat");
+            if (d.etat === "en_cours") {
+                setTimeout(suivreEssai, 5000);
+            } else if (d.etat === "pret") {
+                etat.textContent = "Écoute les 3 propositions, puis choisis celle qui te ressemble le plus :";
+                afficherPropositions(d.propositions);
+            } else if (d.etat === "echoue") {
+                etat.textContent = "Le test a échoué. Relance « Tester ma voix ».";
+            }
+        });
+    }
+    if (zoneEssai && !zoneEssai.hidden) {
+        suivreEssai();
+    }
 
     var formSupprimer = document.getElementById("form-supprimer");
     if (formSupprimer) {

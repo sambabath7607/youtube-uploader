@@ -359,6 +359,16 @@ class MaVoixTests(TestCase):
         self.assertFalse(voix.extrait)
         self.assertIsNone(voix.consentement_le)
 
+    def test_ecouter_sa_voix(self):
+        self.envoyer()
+        reponse = self.client.get(reverse("ecouter_ma_voix"))
+        self.assertEqual(reponse.status_code, 200)
+        self.assertEqual(b"".join(reponse.streaming_content), b"son")
+        self.assertEqual(reponse["Cache-Control"], "no-store")
+
+    def test_ecouter_sans_voix_404(self):
+        self.assertEqual(self.client.get(reverse("ecouter_ma_voix")).status_code, 404)
+
     def test_choix_du_mode(self):
         self.envoyer()
         self.client.post(self.url, {"action": "mode", "mode": "en_ligne"})
@@ -395,6 +405,7 @@ class ApiVoixTests(TestCase):
         self.assertEqual(reponse.status_code, 202)
         self.assertIn("travail", reponse.json())
         self.assertEqual(lancer.call_args.args[1], b"son")
+        self.assertEqual(lancer.call_args.args[2], 0)      # passage choisi transmis à Modal
         self.voix.refresh_from_db()
         self.assertEqual(self.voix.secondes_utilisees, reponse.json()["secondes_estimees"])
 
@@ -450,3 +461,79 @@ class ApiVoixTests(TestCase):
 
     def test_jeton_falsifie_404(self):
         self.assertEqual(self.client.get(reverse("api_etat_voix", args=["faux:jeton"])).status_code, 404)
+
+
+@override_settings(MEDIA_ROOT=DOSSIER_MEDIA_TEST)
+class TesterMaVoixTests(TestCase):
+    """« Tester ma voix » : 3 propositions, choix mémorisé, 3 tests par jour (Modal simulé)."""
+
+    PROPOSITIONS = [{"debut": 0.0, "url": "https://x.modal.run/?jeton=a"},
+                    {"debut": 25.0, "url": "https://x.modal.run/?jeton=b"},
+                    {"debut": 49.0, "url": "https://x.modal.run/?jeton=c"}]
+
+    def setUp(self):
+        from . import models
+        self.dossier = tempfile.mkdtemp()
+        self.ancien_emplacement = models.stockage_prive.location
+        models.stockage_prive.location = self.dossier
+        self.user = User.objects.create_user(username="samba", password="motdepasse123")
+        self.voix = VoixUtilisateur.objects.create(user=self.user, consentement_le=timezone.now())
+        self.voix.extrait.save("voix.webm", SimpleUploadedFile("voix.webm", b"son"))
+        self.client.force_login(self.user)
+
+    def tearDown(self):
+        from . import models
+        models.stockage_prive.location = self.ancien_emplacement
+        shutil.rmtree(self.dossier, ignore_errors=True)
+
+    def tester(self):
+        return self.client.post(reverse("ma_voix"), {"action": "tester"}, follow=True)
+
+    @patch("youtube_uploader.views.lancer_essai", return_value="fc-essai")
+    def test_essai_lance_puis_propositions(self, lancer):
+        self.assertContains(self.tester(), "Test lancé")
+        self.assertEqual(lancer.call_args.args[0], b"son")
+        with patch("youtube_uploader.views.etat_lecture", return_value=None):
+            self.assertEqual(self.client.get(reverse("essai_ma_voix")).json()["etat"], "en_cours")
+        with patch("youtube_uploader.views.etat_lecture", return_value=self.PROPOSITIONS):
+            reponse = self.client.get(reverse("essai_ma_voix")).json()
+        self.assertEqual(reponse["etat"], "pret")
+        self.assertEqual(len(reponse["propositions"]), 3)
+
+    @patch("youtube_uploader.views.lancer_essai", return_value="fc-essai")
+    def test_choisir_une_proposition(self, lancer):
+        self.tester()
+        with patch("youtube_uploader.views.etat_lecture", return_value=self.PROPOSITIONS):
+            self.client.get(reverse("essai_ma_voix"))
+        self.client.post(reverse("ma_voix"), {"action": "choisir", "debut": "25.0"})
+        self.voix.refresh_from_db()
+        self.assertEqual(self.voix.passage_debut, 25.0)
+
+    def test_choix_inconnu_refuse(self):
+        reponse = self.client.post(reverse("ma_voix"), {"action": "choisir", "debut": "12"}, follow=True)
+        self.assertContains(reponse, "Proposition introuvable")
+        self.voix.refresh_from_db()
+        self.assertEqual(self.voix.passage_debut, 0)
+
+    @patch("youtube_uploader.views.lancer_essai", return_value="fc-essai")
+    def test_trois_tests_par_jour(self, lancer):
+        for _ in range(3):
+            self.tester()
+        self.assertContains(self.tester(), "Réessaie demain")
+        self.assertEqual(lancer.call_count, 3)
+
+    @patch("youtube_uploader.views.lancer_essai", return_value="fc-essai")
+    def test_reenregistrer_remet_le_passage_a_zero(self, lancer):
+        self.voix.passage_debut = 25.0
+        self.voix.save()
+        self.client.post(reverse("ma_voix"), {"action": "enregistrer", "consentement": "on",
+                                              "extrait": SimpleUploadedFile("v.webm", b"nouveau")})
+        self.voix.refresh_from_db()
+        self.assertEqual(self.voix.passage_debut, 0)
+
+    @patch("youtube_uploader.views.lancer_essai", side_effect=RuntimeError("modal en panne"))
+    def test_service_indisponible_sans_decompte(self, lancer):
+        with self.assertLogs("youtube_uploader.views", level="ERROR"):
+            self.assertContains(self.tester(), "indisponible")
+        self.voix.refresh_from_db()
+        self.assertEqual(self.voix.essais_du_jour, 0)

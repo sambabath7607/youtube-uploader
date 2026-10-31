@@ -58,17 +58,27 @@ class Voix:
         from chatterbox.mtl_tts import ChatterboxMultilingualTTS
         self.modele = ChatterboxMultilingualTTS.from_pretrained(device="cuda", t3_model="v3")
 
-    @modal.method()
-    def lire(self, texte: str, reference: bytes) -> dict:
-        import torch
+    @staticmethod
+    def preparer_reference(reference: bytes, dossier: str, debut: float = 0.0) -> str:
+        """Convertit l'extrait (webm...) en wav et garde 12 s à partir de « debut » (le modèle n'en écoute que 10)."""
+        brut, wav = Path(dossier) / "brut", Path(dossier) / f"reference_{debut}.wav"
+        brut.write_bytes(reference)
+        subprocess.run(["ffmpeg", "-v", "error", "-y", "-ss", str(debut), "-t", "12", "-i", str(brut),
+                        "-ac", "1", "-ar", "24000", str(wav)], check=True)
+        return str(wav)
+
+    def sauver(self, son) -> str:
         import torchaudio as ta
+        jeton = secrets.token_urlsafe(32)
+        ta.save(str(DOSSIER_AUDIO / f"{jeton}.wav"), son, self.modele.sr)
+        return f"{telecharger.get_web_url()}?jeton={jeton}"
 
-        # L'extrait arrive tel qu'enregistré dans le navigateur (webm...) : conversion en wav
+    @modal.method()
+    def lire(self, texte: str, reference: bytes, debut: float = 0.0) -> dict:
+        import torch
+
         with tempfile.TemporaryDirectory() as dossier:
-            brut, wav = Path(dossier) / "brut", Path(dossier) / "reference.wav"
-            brut.write_bytes(reference)
-            subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(brut), "-ac", "1", "-ar", "24000", str(wav)], check=True)
-
+            wav = self.preparer_reference(reference, dossier, debut)
             torch.manual_seed(42)   # même voix d'une fois à l'autre
             sr = self.modele.sr
             silence = lambda s: torch.zeros(1, int(sr * s))
@@ -77,7 +87,7 @@ class Voix:
             for i, paragraphe in enumerate(paragraphes, 1):
                 sons = []
                 for m in morceaux(paragraphe):
-                    son = self.modele.generate(m, language_id="fr", audio_prompt_path=str(wav), **REGLAGE)
+                    son = self.modele.generate(m, language_id="fr", audio_prompt_path=wav, **REGLAGE)
                     sons += [son.cpu(), silence(PAUSE_PHRASE)]
                 son = torch.cat(sons, dim=1)
                 duree = son.shape[1] / sr
@@ -86,11 +96,33 @@ class Voix:
                 position += duree + PAUSE_PARAGRAPHE
                 tout += [son, silence(PAUSE_PARAGRAPHE)]
 
-        jeton = secrets.token_urlsafe(32)
-        ta.save(str(DOSSIER_AUDIO / f"{jeton}.wav"), torch.cat(tout, dim=1), sr)
+        url = self.sauver(torch.cat(tout, dim=1))
         volume.commit()
-        return {"url": f"{telecharger.get_web_url()}?jeton={jeton}", "duree_audio": round(position, 1),
-                "minutage": minutage}
+        return {"url": url, "duree_audio": round(position, 1), "minutage": minutage}
+
+    @modal.method()
+    def essayer(self, texte: str, reference: bytes) -> list:
+        """« Tester ma voix » : le même texte lu à partir de 3 passages de l'enregistrement (début, milieu, fin)."""
+        import torch
+
+        with tempfile.TemporaryDirectory() as dossier:
+            brut = Path(dossier) / "complet"
+            brut.write_bytes(reference)
+            sortie = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0",
+                                     str(brut)], capture_output=True, text=True, check=True)
+            try:
+                duree = float(sortie.stdout.strip())
+            except ValueError:
+                duree = 30.0   # certains enregistrements webm n'indiquent pas leur durée
+            debuts = sorted({0.0, round(max(0.0, duree / 2 - 5), 1), round(max(0.0, duree - 11), 1)})
+            propositions = []
+            for debut in debuts:
+                wav = self.preparer_reference(reference, dossier, debut)
+                torch.manual_seed(42)
+                son = self.modele.generate(texte, language_id="fr", audio_prompt_path=wav, **REGLAGE)
+                propositions.append({"debut": debut, "url": self.sauver(son.cpu())})
+        volume.commit()
+        return propositions
 
 
 @app.function(image=image_legere, volumes={str(DOSSIER_AUDIO): volume})

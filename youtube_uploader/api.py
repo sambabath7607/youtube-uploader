@@ -100,7 +100,7 @@ def api_voix(request):
                       f"{duree_lisible(secondes)}.", "quota_voix_atteint", status.HTTP_429_TOO_MANY_REQUESTS)
     try:
         with voix.extrait.open("rb") as f:
-            id_appel = lancer_lecture(texte, f.read())
+            id_appel = lancer_lecture(texte, f.read(), voix.passage_debut)
     except Exception:
         logger.exception("Service de voix : impossible de lancer la lecture")
         return erreur("Le service de voix est indisponible. Réessaie dans quelques minutes.", "service_voix_indisponible",

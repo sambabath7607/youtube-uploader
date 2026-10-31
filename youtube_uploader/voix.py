@@ -43,14 +43,35 @@ def lire_jeton(jeton, user):
     return donnees["appel"] if donnees.get("user") == user.id else None
 
 
-def lancer_lecture(texte, reference):
+TEXTE_ESSAI = ("Bonjour à tous, et bienvenue dans ce nouveau cours. "
+               "Aujourd'hui, nous allons apprendre quelque chose de nouveau, étape par étape.")
+
+
+def lancer_lecture(texte, reference, debut=0.0):
     import modal
     Voix = modal.Cls.from_name(APP_MODAL, "Voix")
-    return Voix().lire.spawn(texte, reference).object_id
+    return Voix().lire.spawn(texte, reference, debut).object_id
+
+
+def lancer_essai(reference):
+    """« Tester ma voix » : 3 propositions, chacune à partir d'un passage différent de l'enregistrement."""
+    import modal
+    Voix = modal.Cls.from_name(APP_MODAL, "Voix")
+    return Voix().essayer.spawn(TEXTE_ESSAI, reference).object_id
+
+
+def essais_restants(voix):
+    """Tests « Tester ma voix » encore permis aujourd'hui (compteur remis à zéro chaque jour)."""
+    from .models import ESSAIS_PAR_JOUR
+    aujourd_hui = timezone.localdate()
+    if voix.jour_des_essais != aujourd_hui:
+        voix.jour_des_essais, voix.essais_du_jour = aujourd_hui, 0
+        voix.save(update_fields=["jour_des_essais", "essais_du_jour"])
+    return max(0, ESSAIS_PAR_JOUR - voix.essais_du_jour)
 
 
 def etat_lecture(id_appel):
-    """Résultat du travail (dict) s'il est fini, None s'il est encore en cours. Lève une exception s'il a échoué."""
+    """Résultat du travail (dict ou liste) s'il est fini, None s'il est encore en cours. Lève une exception s'il a échoué."""
     import modal
     try:
         return modal.FunctionCall.from_id(id_appel).get(timeout=0)

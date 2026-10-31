@@ -6,6 +6,7 @@ from django.db import models
 stockage_prive = FileSystemStorage(location=settings.BASE_DIR / "prive")
 
 QUOTA_GRATUIT_SECONDES = 10 * 60   # 10 minutes d'audio par mois, offertes (option « En ligne »)
+ESSAIS_PAR_JOUR = 3                # « Tester ma voix » : 3 tests par jour, non décomptés du quota
 
 
 class YouTubeCredentials(models.Model):
@@ -51,6 +52,9 @@ class VoixUtilisateur(models.Model):
     consentement_le = models.DateTimeField(null=True, blank=True)   # date où il a lu la phrase de consentement
     secondes_utilisees = models.PositiveIntegerField(default=0)     # audio fabriqué ce mois-ci
     mois_du_compteur = models.DateField(null=True, blank=True)      # pour remettre le compteur à zéro chaque mois
+    passage_debut = models.FloatField(default=0)                    # début (en s) des 10 s que le modèle écoute
+    essais_du_jour = models.PositiveSmallIntegerField(default=0)    # « Tester ma voix » utilisés aujourd'hui
+    jour_des_essais = models.DateField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

@@ -413,3 +413,41 @@ réglage « stable ». Le serveur ne fabrique jamais la voix : il garde l'extrai
 - Test réel du service déployé : 12,3 s d'audio fabriquées en 84 s (démarrage compris), téléchargées par le lien.
   Piège : le Python 3.11 du PC a une liste de certificats trop ancienne → utiliser certifi (curl marche).
 - Le serveur du site ne fait aucun calcul de voix et l'audio ne le traverse pas.
+
+### Mise en ligne de la Partie 24 (terminée, 31 octobre 2026)
+Sur le serveur (~/youtube-uploader, .venv activé), par Samba, une commande à la fois :
+```
+cp db.sqlite3 ~/db_youtube_avant-partie24_$(date +%F).sqlite3 && chmod 600 ~/db_youtube_avant-partie24_*.sqlite3
+git pull origin main                         # 9433e80
+pip install modal==1.6.3
+modal token set --token-id … --token-secret …   # clé créée sur modal.com/settings/tokens (une seule fois par machine)
+mkdir -p prive && chmod 700 prive            # extraits de voix, fermés aux autres comptes
+python manage.py migrate                     # 0004_voixutilisateur
+sudo systemctl restart youtube-uploader && sudo systemctl restart youtube-mcp
+```
+Vérifié depuis le PC : /youtube/ma-voix/ → 302 (connexion demandée), API de voix sans clé → 401, /mcp sans clé → 401.
+
+### Pièges rencontrés
+- `modal token new` sur le serveur : le lien à ouvrir dans le navigateur du PC n'a pas abouti (« Waiting… » sans fin).
+  Solution : créer une clé sur https://modal.com/settings/tokens (« New Token » : le secret n'est montré qu'une fois)
+  puis `modal token set --token-id TON_IDENTIFIANT --token-secret TON_SECRET`.
+- Après `git pull`, il faut redémarrer le site, sinon les nouvelles adresses répondent 404.
+- Les utilisateurs n'installent rien : seul le serveur est relié à Modal (compte de Samba, 30 $ offerts par mois),
+  et chaque utilisateur a 10 min d'audio par mois.
+
+### Écouter sa voix + « Tester ma voix » (31 octobre 2026, sur le PC)
+- Problème signalé par Samba : (1) impossible de réécouter sa voix après l'enregistrement ; (2) que faire si la voix
+  fabriquée ne lui ressemble pas ?
+- Écoute : vue `ecouter_ma_voix` (/youtube/ma-voix/ecouter/), réservée au propriétaire, `Cache-Control: no-store`,
+  lecteur audio sur la page.
+- « Tester ma voix » (solution choisie parmi : réenregistrer, réessayer au hasard, 3 propositions) :
+  - le modèle n'écoute que 10 s de l'enregistrement → le service Modal `essayer` lit une phrase à partir de 3 passages
+    (début, milieu, fin) ; l'utilisateur écoute et clique « ✅ C'est ma voix » ; le passage est mémorisé
+    (`passage_debut`) et transmis à `lire` pour toutes ses vidéos ;
+  - 3 tests par jour (`essais_du_jour`, `jour_des_essais`), non décomptés des 10 min ; réenregistrer ou supprimer
+    remet le passage à 0 ;
+  - la page interroge /youtube/ma-voix/essai/ toutes les 5 s (JSON) puis affiche les 3 lecteurs.
+- Migration 0005 (passage_debut, essais_du_jour, jour_des_essais) : créée sur le PC, à appliquer (`migrate`).
+- Service Modal redéployé (`modal deploy voix_modal/service.py`) : `lire(texte, reference, debut=0)` reste compatible.
+- Test réel de `essayer` : 3 propositions (passages 0 s, 15,8 s, 30,7 s) en 84 s.
+- Tests : 2 (écoute) + 6 (TesterMaVoixTests) → 79 tests OK.
