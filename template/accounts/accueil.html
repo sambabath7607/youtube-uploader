@@ -16,6 +16,14 @@
     <a href="{% url 'connecter_youtube' %}">Connecter ma chaîne YouTube</a>
 {% endif %}
 
+<h2>Ma voix pour les vidéos</h2>
+{% if user.voix.extrait %}
+    <p>Voix enregistrée ✅ — {{ user.voix.get_mode_display }}</p>
+{% else %}
+    <p>Pas encore de voix enregistrée : Claude peut lire tes vidéos avec ta voix.</p>
+{% endif %}
+<a href="{% url 'ma_voix' %}">🎙️ Gérer ma voix</a>
+
 <h2>Mes outils</h2>
 <ul>
     <li><a href="{% url 'nouvelle_video' %}">Envoyer une vidéo</a></li>

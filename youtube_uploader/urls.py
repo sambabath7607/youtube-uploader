@@ -8,6 +8,9 @@ urlpatterns = [
     path("oauth/callback/", oauth.oauth_callback, name="oauth_callback"),
     path("nouvelle/", views.nouvelle_video, name="nouvelle_video"),
     path("video/<int:video_id>/", views.suivi_video, name="suivi_video"),
+    path("ma-voix/", views.ma_voix, name="ma_voix"),
     path("api/v1/videos/", api.api_videos, name="api_videos"),
     path("api/v1/videos/<int:video_id>/", api.api_etat_video, name="api_etat_video"),
+    path("api/v1/voix/", api.api_voix, name="api_voix"),
+    path("api/v1/voix/<str:travail>/", api.api_etat_voix, name="api_etat_voix"),
 ]

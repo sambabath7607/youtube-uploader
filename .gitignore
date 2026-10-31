@@ -6,6 +6,7 @@ token.json
 # Données locales
 db.sqlite3
 media/
+prive/
 staticfiles/
 *.mp4
 *.mov

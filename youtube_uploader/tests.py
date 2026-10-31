@@ -1,4 +1,5 @@
 import json
+from datetime import date
 import shutil
 import tempfile
 from unittest.mock import patch
@@ -8,6 +9,7 @@ from django.core.management import call_command
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from django.utils import timezone
 from rest_framework.test import APIClient
 
 from accounts.models import CleApi
@@ -15,7 +17,7 @@ from accounts.models import CleApi
 from .chiffrement import JetonIllisible, chiffrer, dechiffrer
 from .envois import MESSAGE_INTERROMPU, prendre_prochaine_video
 from .erreurs import message_erreur
-from .models import Video, YouTubeCredentials
+from .models import Video, VoixUtilisateur, YouTubeCredentials
 from .validation import LIMITE_ENVOIS_PAR_JOUR
 
 DOSSIER_MEDIA_TEST = tempfile.mkdtemp()
@@ -305,3 +307,146 @@ class FormulaireEnvoiTests(TestCase):
         autre = User.objects.create_user(username="autre", password="motdepasse123")
         video = Video.objects.create(user=autre, titre="x", pour_enfants=False, fichier="videos/x.mp4")
         self.assertEqual(self.client.get(reverse("suivi_video", args=[video.id])).status_code, 404)
+
+
+@override_settings(MEDIA_ROOT=DOSSIER_MEDIA_TEST)
+class MaVoixTests(TestCase):
+    """Page « Ma voix » : enregistrement avec consentement, suppression, choix du mode."""
+
+    def setUp(self):
+        from . import models
+        self.dossier = tempfile.mkdtemp()
+        self.ancien_emplacement = models.stockage_prive.location
+        models.stockage_prive.location = self.dossier   # les tests n'écrivent jamais dans src/prive/
+        self.user = User.objects.create_user(username="samba", password="motdepasse123")
+        self.client.force_login(self.user)
+        self.url = reverse("ma_voix")
+
+    def tearDown(self):
+        from . import models
+        models.stockage_prive.location = self.ancien_emplacement
+        shutil.rmtree(self.dossier, ignore_errors=True)
+
+    def envoyer(self, consentement=True, contenu=b"son"):
+        donnees = {"action": "enregistrer", "extrait": SimpleUploadedFile("voix.webm", contenu, content_type="audio/webm")}
+        if consentement:
+            donnees["consentement"] = "on"
+        return self.client.post(self.url, donnees, follow=True)
+
+    def test_page_interdite_sans_connexion(self):
+        self.client.logout()
+        self.assertEqual(self.client.get(self.url).status_code, 302)
+
+    def test_refus_sans_consentement(self):
+        self.assertContains(self.envoyer(consentement=False), "propre voix")
+        self.assertFalse(VoixUtilisateur.objects.get(user=self.user).extrait)
+
+    def test_refus_fichier_trop_lourd(self):
+        with patch("youtube_uploader.views.TAILLE_MAX_VOIX", 2):
+            self.assertContains(self.envoyer(), "trop lourd")
+        self.assertFalse(VoixUtilisateur.objects.get(user=self.user).extrait)
+
+    def test_enregistrement_accepte(self):
+        self.assertContains(self.envoyer(), "Ta voix est enregistrée")
+        voix = VoixUtilisateur.objects.get(user=self.user)
+        self.assertTrue(voix.extrait)
+        self.assertIsNotNone(voix.consentement_le)
+
+    def test_suppression(self):
+        self.envoyer()
+        self.client.post(self.url, {"action": "supprimer"})
+        voix = VoixUtilisateur.objects.get(user=self.user)
+        self.assertFalse(voix.extrait)
+        self.assertIsNone(voix.consentement_le)
+
+    def test_choix_du_mode(self):
+        self.envoyer()
+        self.client.post(self.url, {"action": "mode", "mode": "en_ligne"})
+        self.assertEqual(VoixUtilisateur.objects.get(user=self.user).mode, "en_ligne")
+        self.client.post(self.url, {"action": "mode", "mode": "nimporte"})
+        self.assertEqual(VoixUtilisateur.objects.get(user=self.user).mode, "aucune")
+
+
+class ApiVoixTests(TestCase):
+    """API de voix : vérifications avant d'appeler Modal (le calcul lui-même est simulé)."""
+
+    def setUp(self):
+        from . import models
+        self.dossier = tempfile.mkdtemp()
+        self.ancien_emplacement = models.stockage_prive.location
+        models.stockage_prive.location = self.dossier
+        self.user = User.objects.create_user(username="samba", password="motdepasse123")
+        self.voix = VoixUtilisateur.objects.create(user=self.user, mode="en_ligne", consentement_le=timezone.now())
+        self.voix.extrait.save("voix.webm", SimpleUploadedFile("voix.webm", b"son"))
+        self.client = APIClient()
+        self.client.credentials(HTTP_AUTHORIZATION="Token " + CleApi.creer_pour(self.user))
+
+    def tearDown(self):
+        from . import models
+        models.stockage_prive.location = self.ancien_emplacement
+        shutil.rmtree(self.dossier, ignore_errors=True)
+
+    def lancer(self, texte="Bonjour à tous. " * 10):
+        return self.client.post(reverse("api_voix"), {"texte": texte}, format="json")
+
+    @patch("youtube_uploader.api.lancer_lecture", return_value="fc-123")
+    def test_lecture_lancee_et_quota_decompte(self, lancer):
+        reponse = self.lancer()
+        self.assertEqual(reponse.status_code, 202)
+        self.assertIn("travail", reponse.json())
+        self.assertEqual(lancer.call_args.args[1], b"son")
+        self.voix.refresh_from_db()
+        self.assertEqual(self.voix.secondes_utilisees, reponse.json()["secondes_estimees"])
+
+    def test_sans_voix_enregistree(self):
+        self.voix.extrait.delete()
+        self.assertEqual(self.lancer().json()["code"], "voix_absente")
+
+    def test_mode_autre_que_en_ligne(self):
+        self.voix.mode = "pc"
+        self.voix.save()
+        self.assertEqual(self.lancer().json()["code"], "mode_voix")
+
+    def test_quota_atteint(self):
+        self.voix.secondes_utilisees = 600
+        self.voix.mois_du_compteur = timezone.localdate().replace(day=1)
+        self.voix.save()
+        reponse = self.lancer()
+        self.assertEqual(reponse.status_code, 429)
+        self.assertEqual(reponse.json()["code"], "quota_voix_atteint")
+
+    def test_compteur_remis_a_zero_chaque_mois(self):
+        self.voix.secondes_utilisees = 600
+        self.voix.mois_du_compteur = date(2020, 1, 1)
+        self.voix.save()
+        with patch("youtube_uploader.api.lancer_lecture", return_value="fc-1"):
+            self.assertEqual(self.lancer().status_code, 202)
+
+    @patch("youtube_uploader.api.lancer_lecture", side_effect=RuntimeError("modal en panne"))
+    def test_service_indisponible_sans_decompte(self, lancer):
+        with self.assertLogs("youtube_uploader.api", level="ERROR"):
+            self.assertEqual(self.lancer().status_code, 503)
+        self.voix.refresh_from_db()
+        self.assertEqual(self.voix.secondes_utilisees, 0)
+
+    @patch("youtube_uploader.api.lancer_lecture", return_value="fc-123")
+    def test_etat_en_cours_puis_pret(self, lancer):
+        travail = self.lancer().json()["travail"]
+        url = reverse("api_etat_voix", args=[travail])
+        with patch("youtube_uploader.api.etat_lecture", return_value=None):
+            self.assertEqual(self.client.get(url).json()["etat"], "en_cours")
+        resultat = {"url": "https://exemple.modal.run/?jeton=abc", "duree_audio": 4.0, "minutage": []}
+        with patch("youtube_uploader.api.etat_lecture", return_value=resultat) as etat:
+            reponse = self.client.get(url).json()
+        self.assertEqual(reponse["etat"], "pret")
+        self.assertEqual(etat.call_args.args[0], "fc-123")
+
+    @patch("youtube_uploader.api.lancer_lecture", return_value="fc-123")
+    def test_travail_d_un_autre_404(self, lancer):
+        travail = self.lancer().json()["travail"]
+        autre = User.objects.create_user(username="autre", password="motdepasse123")
+        self.client.credentials(HTTP_AUTHORIZATION="Token " + CleApi.creer_pour(autre))
+        self.assertEqual(self.client.get(reverse("api_etat_voix", args=[travail])).status_code, 404)
+
+    def test_jeton_falsifie_404(self):
+        self.assertEqual(self.client.get(reverse("api_etat_voix", args=["faux:jeton"])).status_code, 404)

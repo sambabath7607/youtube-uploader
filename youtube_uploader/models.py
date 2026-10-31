@@ -1,5 +1,11 @@
 from django.conf import settings
+from django.core.files.storage import FileSystemStorage
 from django.db import models
+
+# Les extraits de voix sont rangés dans src/prive/ : jamais servis par le site (ni /media/, ni Nginx)
+stockage_prive = FileSystemStorage(location=settings.BASE_DIR / "prive")
+
+QUOTA_GRATUIT_SECONDES = 10 * 60   # 10 minutes d'audio par mois, offertes (option « En ligne »)
 
 
 class YouTubeCredentials(models.Model):
@@ -31,3 +37,21 @@ class Video(models.Model):
 
     def __str__(self):
         return self.titre
+
+class VoixUtilisateur(models.Model):
+    MODES = [
+        ("en_ligne", "En ligne (rapide, sans installation)"),
+        ("pc", "Sur mon PC (gratuit, plus lent)"),
+        ("aucune", "Sans voix"),
+    ]
+
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="voix")
+    extrait = models.FileField(storage=stockage_prive, upload_to="voix/", blank=True)
+    mode = models.CharField(max_length=10, choices=MODES, default="aucune")
+    consentement_le = models.DateTimeField(null=True, blank=True)   # date où il a lu la phrase de consentement
+    secondes_utilisees = models.PositiveIntegerField(default=0)     # audio fabriqué ce mois-ci
+    mois_du_compteur = models.DateField(null=True, blank=True)      # pour remettre le compteur à zéro chaque mois
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Voix de {self.user} ({self.get_mode_display()})"

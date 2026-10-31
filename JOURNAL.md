@@ -357,3 +357,59 @@ modelcontextprotocol.io/specification (révisions 2025-06-18 et 2026-07-28).
 - Tests : VerifierCleTests (x-api-key accepté, Authorization toujours accepté, sans clé → 401). Vérifiés sur le PC
   avec des modules factices (7 tests MCP OK) ; `manage.py test` : 55 tests OK (7 sautés sans le paquet mcp).
 - Réglage dans claude.ai : Authentication « No sign in », en-tête `x-api-key`, valeur = la clé seule.
+
+---
+
+## Partie 24 : la voix de l'utilisateur pour les vidéos (en cours, 31 octobre 2026)
+Banc d'essai et choix du modèle : voir le journal du dossier Bureau\atelier-voix (JOURNAL.md).
+Décision : Chatterbox Multilingual V3 sur Modal (carte graphique T4, 30 $ de crédits offerts par mois),
+réglage « stable ». Le serveur ne fabrique jamais la voix : il garde l'extrait et les choix.
+
+| Étape | Contenu | État |
+|---|---|---|
+| 1 | Modèle `VoixUtilisateur` + stockage privé `src/prive/` (hors /media/, ignoré par Git) | ✅ |
+| 2 | Page « Ma voix » : enregistrement dans le navigateur + consentement | ✅ |
+| 3 | Lien et 3 choix sur l'accueil (En ligne · Sur mon PC · Sans voix) | ✅ |
+| 4 | Service Modal (déployé) + API de voix | ✅ |
+| 5 | Outils `fabriquer_voix` et `etat_voix` dans le connecteur MCP | ✅ |
+
+### Étape 1 (terminée)
+- youtube_uploader/models.py : `stockage_prive` (src/prive/), `QUOTA_GRATUIT_SECONDES = 600` (10 min/mois),
+  modèle `VoixUtilisateur` (user, extrait, mode en_ligne/pc/aucune, consentement_le, secondes_utilisees,
+  mois_du_compteur, created_at).
+- .gitignore : `prive/`.
+- Migration 0004_voixutilisateur créée et appliquée par Samba lui-même dans PyCharm :
+  `python manage.py makemigrations youtube_uploader` puis `python manage.py migrate`.
+
+### Étape 2 (terminée)
+- youtube_uploader/views.py : vue `ma_voix` (actions enregistrer / supprimer / mode ; refus sans consentement ou
+  fichier > 10 Mo ; date du consentement enregistrée ; phrase de consentement avec le nom et la date).
+- youtube_uploader/urls.py : `ma-voix/` → /youtube/ma-voix/.
+- template/youtube_uploader/ma_voix.html : conseils, texte à lire (consentement + ~1 min), boutons Enregistrer /
+  Arrêter, jauge de durée (30 s minimum), réécoute, case « C'est ma propre voix », Valider ; si voix enregistrée :
+  date, choix du mode (En ligne · Sur mon PC · Sans voix), Supprimer (avec confirmation).
+  Enregistrement fait dans le navigateur (MediaRecorder) : le serveur reçoit seulement le fichier.
+- Tests MaVoixTests (6) : sans connexion, sans consentement, trop lourd, accepté, suppression, choix du mode.
+  61 tests OK (7 sautés sans le paquet mcp).
+
+### Étapes 3 à 5 (terminées sur le PC, 31 octobre 2026) — Samba a demandé de tout finaliser d'un coup
+- template/accounts/accueil.html : section « Ma voix pour les vidéos » + lien 🎙️ Gérer ma voix.
+- Page « Ma voix » : quota affiché (« il te reste X min ce mois-ci, sur 10 min offertes »).
+- voix_modal/service.py (tourne chez Modal, PAS sur le serveur) : classe `Voix` (Chatterbox V3, réglage stable,
+  graine fixe, conversion webm → wav avec ffmpeg, lecture par morceaux, minutage par paragraphe), audio rangé dans
+  le volume Modal « batchcodeia-voix-audio », lien secret `telecharger?jeton=…`, effacement après 24 h (`nettoyer`,
+  toutes les 6 h). Déployé depuis le PC : `modal deploy voix_modal/service.py`
+  → https://sambabath7607--batchcodeia-voix-telecharger.us-east.modal.run
+- youtube_uploader/voix.py : estimation de durée (2,5 mots/s), quota mensuel remis à zéro, jeton de travail signé
+  avec l'utilisateur (personne d'autre ne peut le lire, valable 24 h), appels Modal (`spawn`, `FunctionCall.get`).
+- youtube_uploader/api.py : POST /youtube/api/v1/voix/ (vérifie voix + consentement + mode « En ligne » + quota,
+  lance chez Modal, décompte, 202) et GET /youtube/api/v1/voix/<travail>/ (en_cours / pret + url_audio + minutage
+  / echoue). Service indisponible → 503 sans décompte.
+- mcp_server.py : outils `fabriquer_voix(texte)` et `etat_voix(travail)` ; la description explique à Claude toute la
+  marche à suivre (script → voix → Remotion → envoi avec contenu_ia = true).
+- Confidentialité : voix, consentement, transfert à Modal (États-Unis) seulement à la demande, effacement 24 h.
+- requirements.txt : modal==1.6.3 ; .env.example : MODAL_TOKEN_ID / MODAL_TOKEN_SECRET.
+- Tests : ApiVoixTests (9) + lien de l'accueil. 70 tests OK (7 sautés sans le paquet mcp).
+- Test réel du service déployé : 12,3 s d'audio fabriquées en 84 s (démarrage compris), téléchargées par le lien.
+  Piège : le Python 3.11 du PC a une liste de certificats trop ancienne → utiliser certifi (curl marche).
+- Le serveur du site ne fait aucun calcul de voix et l'audio ne le traverse pas.

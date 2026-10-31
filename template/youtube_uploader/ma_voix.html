@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% block titre %}Ma voix pour les vidéos{% endblock %}
+
+{% block contenu %}
+<h1>Ma voix pour les vidéos</h1>
+<p>Enregistre ta voix une seule fois (environ 1 minute). Claude pourra ensuite lire tes vidéos avec ta voix,
+même des vidéos d'une heure, sans que tu aies à parler.</p>
+
+{% if voix.extrait %}
+<article>
+    <h2>Ta voix est enregistrée ✅</h2>
+    <p>Enregistrée le {{ voix.consentement_le|date:"j F Y à H:i" }}.</p>
+    <p>Option « En ligne » : il te reste <strong>{{ quota_minutes }} min {{ quota_secondes|stringformat:"02d" }} s</strong>
+        d'audio ce mois-ci (sur {{ quota_total }} min offertes).</p>
+
+    <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="mode">
+        <fieldset>
+            <legend>Comment fabriquer la voix de tes vidéos ?</legend>
+            {% for valeur, libelle in voix.MODES %}
+                <label><input type="radio" name="mode" value="{{ valeur }}" {% if voix.mode == valeur %}checked{% endif %}> {{ libelle }}</label>
+            {% endfor %}
+        </fieldset>
+        <button type="submit">Enregistrer mon choix</button>
+    </form>
+
+    <form method="post" id="form-supprimer">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="supprimer">
+        <button type="submit" class="secondary">Supprimer ma voix</button>
+    </form>
+</article>
+{% endif %}
+
+<article>
+    <h2>{% if voix.extrait %}Réenregistrer ma voix{% else %}Enregistrer ma voix{% endif %}</h2>
+
+    <details open>
+        <summary>Conseils pour un bon enregistrement</summary>
+        <ul>
+            <li>Une pièce calme, sans musique ni télévision.</li>
+            <li>Le micro à 15-20 cm de la bouche (un micro de casque ou un téléphone récent est mieux que le micro du PC portable).</li>
+            <li>Parle naturellement, comme dans tes vidéos, avec le même ton du début à la fin.</li>
+        </ul>
+    </details>
+
+    <p><strong>Lis ce texte à voix haute :</strong></p>
+    <blockquote>
+        {{ phrase }}
+        Bonjour à tous, et bienvenue dans cette nouvelle vidéo. Aujourd'hui, nous allons apprendre quelque chose
+        de nouveau, étape par étape. D'abord, je vais vous donner la définition, ensuite la syntaxe, et enfin
+        plusieurs exemples. Prenez le temps de bien comprendre chaque partie avant de passer à la suite.
+        À la fin de la vidéo, vous trouverez des exercices pour vous entraîner. N'hésitez pas à mettre la vidéo
+        en pause, à refaire les exemples chez vous, et à poser vos questions en commentaire. Allez, on commence !
+    </blockquote>
+
+    <p>
+        <button type="button" id="demarrer">🎙️ Enregistrer</button>
+        <button type="button" id="arreter" disabled>⏹ Arrêter</button>
+    </p>
+    <p id="duree">0 s sur 30 s minimum (1 minute conseillée)</p>
+    <progress id="jauge" value="0" max="60"></progress>
+    <audio id="ecoute" controls hidden></audio>
+
+    <form method="post" enctype="multipart/form-data" id="form-voix">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="enregistrer">
+        <input type="file" name="extrait" id="extrait" accept="audio/*" hidden>
+        <label>
+            <input type="checkbox" name="consentement" required>
+            C'est ma propre voix, et j'autorise Batch Code IA à l'utiliser pour créer mes vidéos.
+            (Il est interdit d'enregistrer la voix d'une autre personne.)
+        </label>
+        <button type="submit" id="valider" disabled>Valider ma voix</button>
+    </form>
+</article>
+
+<p><a href="{% url 'accueil' %}">Retour à l'accueil</a></p>
+
+<script>
+    // Enregistrement dans le navigateur (MediaRecorder) : le serveur reçoit seulement le fichier final
+    var DUREE_MIN = 30;
+    var enregistreur = null, morceaux = [], debut = 0, minuteur = null;
+    var boutonDemarrer = document.getElementById("demarrer");
+    var boutonArreter = document.getElementById("arreter");
+    var boutonValider = document.getElementById("valider");
+
+    boutonDemarrer.addEventListener("click", function () {
+        navigator.mediaDevices.getUserMedia({audio: true}).then(function (flux) {
+            morceaux = [];
+            enregistreur = new MediaRecorder(flux);
+            enregistreur.ondataavailable = function (e) { morceaux.push(e.data); };
+            enregistreur.onstop = function () {
+                flux.getTracks().forEach(function (piste) { piste.stop(); });
+                var secondes = Math.round((Date.now() - debut) / 1000);
+                var son = new Blob(morceaux, {type: enregistreur.mimeType});
+                var ecoute = document.getElementById("ecoute");
+                ecoute.src = URL.createObjectURL(son);
+                ecoute.hidden = false;
+                var transfert = new DataTransfer();
+                transfert.items.add(new File([son], "voix.webm", {type: son.type}));
+                document.getElementById("extrait").files = transfert.files;
+                boutonValider.disabled = secondes < DUREE_MIN;
+                if (secondes < DUREE_MIN) {
+                    document.getElementById("duree").textContent = "Trop court (" + secondes + " s) : recommence, au moins 30 s.";
+                }
+            };
+            enregistreur.start();
+            debut = Date.now();
+            boutonDemarrer.disabled = true;
+            boutonArreter.disabled = false;
+            minuteur = setInterval(function () {
+                var s = Math.round((Date.now() - debut) / 1000);
+                document.getElementById("duree").textContent = s + " s sur 30 s minimum (1 minute conseillée)";
+                document.getElementById("jauge").value = Math.min(s, 60);
+            }, 500);
+        }).catch(function () {
+            alert("Impossible d'accéder au micro. Autorise le micro dans ton navigateur, puis réessaie.");
+        });
+    });
+
+    boutonArreter.addEventListener("click", function () {
+        clearInterval(minuteur);
+        enregistreur.stop();
+        boutonDemarrer.disabled = false;
+        boutonArreter.disabled = true;
+    });
+
+    var formSupprimer = document.getElementById("form-supprimer");
+    if (formSupprimer) {
+        formSupprimer.addEventListener("submit", function (e) {
+            if (!confirm("Supprimer définitivement ta voix ?")) { e.preventDefault(); }
+        });
+    }
+</script>
+{% endblock %}

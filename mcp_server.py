@@ -29,6 +29,7 @@ from urllib3.connectionpool import HTTPConnectionPool, HTTPSConnectionPool
 load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
 
 ADRESSE_API = os.environ.get("MCP_ADRESSE_API", "https://api.batchcodeia.com/youtube/api/v1/videos/")
+ADRESSE_VOIX = ADRESSE_API.replace("/videos/", "/voix/")
 TAILLE_MAX = 500 * 1024 * 1024
 HOTE, PORT = "127.0.0.1", 8100
 MESSAGE_CONNEXION = "Problème de connexion. Réessaie dans un instant."
@@ -204,6 +205,15 @@ def lire(cle, url, params=None):
         return {"erreur": MESSAGE_CONNEXION}
 
 
+
+def ecrire(cle, url, donnees):
+    try:
+        return lire_reponse(requests.post(url, headers=entetes(cle), json=donnees, timeout=60))
+    except requests.RequestException:
+        logger.exception("Écriture vers l'API : problème de connexion")
+        return {"erreur": MESSAGE_CONNEXION}
+
+
 # ---------- outils visibles par Claude ----------
 
 @mcp.tool()
@@ -286,3 +296,36 @@ class VerifierCle:
 
 if __name__ == "__main__":
     uvicorn.run(VerifierCle(mcp.streamable_http_app()), host=HOTE, port=PORT, log_level="info")
+
+
+@mcp.tool()
+async def fabriquer_voix(texte: str) -> dict:
+    """Lit un texte (le script d'une vidéo) avec LA VOIX DE L'UTILISATEUR, enregistrée sur la page « Ma voix » du site.
+
+    Marche à suivre pour créer une vidéo avec sa voix :
+    1. Écris le script complet. Un paragraphe = une idée, paragraphes séparés par une ligne vide.
+    2. Appelle fabriquer_voix(texte). La réponse contient "travail" et "secondes_estimees" (décomptées de son quota du mois).
+    3. Appelle etat_voix(travail) toutes les 15 à 30 secondes jusqu'à "pret" (la lecture dure environ la durée de l'audio).
+    4. Télécharge "url_audio" (fichier wav, valable 24 h) et cale les animations sur "minutage" (début et durée de chaque paragraphe).
+    5. Fabrique la vidéo (Remotion, sur l'ordinateur de l'utilisateur, avec Claude Code), puis envoie-la avec contenu_ia = true :
+       une voix clonée est un contenu modifié par IA.
+    Les vidéos avancées (Remotion) se fabriquent avec Claude Code sur ordinateur. Sans terminal (claude.ai, téléphone),
+    propose seulement l'audio à l'utilisateur.
+    Erreurs : voix_absente ou mode_voix (l'utilisateur doit régler sa voix sur le site), quota_voix_atteint (s'arrêter et prévenir).
+    """
+    cle, probleme = cle_ou_erreur()
+    if probleme:
+        return probleme
+    return await anyio.to_thread.run_sync(ecrire, cle, ADRESSE_VOIX, {"texte": texte})
+
+
+@mcp.tool()
+async def etat_voix(travail: str) -> dict:
+    """Donne l'état d'une lecture lancée par fabriquer_voix : en_cours, pret (avec url_audio et minutage) ou echoue.
+
+    Ne pas appeler plus d'une fois toutes les 15 secondes.
+    """
+    cle, probleme = cle_ou_erreur()
+    if probleme:
+        return probleme
+    return await anyio.to_thread.run_sync(lire, cle, f"{ADRESSE_VOIX}{travail}/")

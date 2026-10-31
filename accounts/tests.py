@@ -119,7 +119,7 @@ class PagesPubliquesTests(TestCase):
         User.objects.create_user(username="samba", password="motdepasse123")
         self.client.login(username="samba", password="motdepasse123")
         reponse = self.client.get(reverse("accueil"))
-        for nom in ["ma_cle", "mes_donnees", "supprimer_compte", "nouvelle_video", "conditions", "confidentialite"]:
+        for nom in ["ma_cle", "mes_donnees", "supprimer_compte", "nouvelle_video", "conditions", "confidentialite", "ma_voix"]:
             self.assertContains(reponse, reverse(nom))
 
     def test_style_servi_par_le_site_sans_cdn(self):
