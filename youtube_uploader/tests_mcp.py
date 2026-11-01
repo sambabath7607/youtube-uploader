@@ -100,3 +100,15 @@ class VerifierCleTests(SimpleTestCase):
 
     def test_sans_cle_refuse(self):
         self.assertEqual(self.appeler([]), (401, None))
+
+
+class OrdreDuFichierTests(SimpleTestCase):
+    """Le serveur démarre à la ligne « if __name__ == '__main__' » : tous les outils doivent être déclarés AVANT."""
+
+    def test_demarrage_apres_tous_les_outils(self):
+        from pathlib import Path
+        lignes = (Path(__file__).resolve().parent.parent / "mcp_server.py").read_text(encoding="utf-8").splitlines()
+        demarrage = next(i for i, l in enumerate(lignes) if l.startswith("if __name__"))
+        outils = [i for i, l in enumerate(lignes) if l.startswith("@mcp.tool()")]
+        self.assertEqual(len(outils), 7)
+        self.assertGreater(demarrage, max(outils))

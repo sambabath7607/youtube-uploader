@@ -561,3 +561,11 @@ Tenue à jour : cocher ici quand une ligne est faite.
 - C3 : mode « Sur mon PC » retiré (migration 0007 : les voix « pc » passent « aucune »).
 - Guide « Utiliser avec Claude » et README mis à jour (mon_compte, visibilité).
 - Migration 0007. Tests VisibiliteEtChaineTests (5). 96 tests OK.
+
+### Correction : le connecteur ne proposait que 3 outils (1er novembre 2026)
+- Cause (erreur de Claude) : les nouveaux outils avaient été ajoutés APRÈS `if __name__ == "__main__": uvicorn.run(...)`.
+  Lancé par systemd (`python mcp_server.py`), le serveur démarrait avant de les déclarer → seulement 3 outils.
+  Les tests ne le voyaient pas : ils importent le fichier sans passer par `__main__`.
+- Correction : le démarrage est déplacé tout à la fin de mcp_server.py.
+- Test ajouté `OrdreDuFichierTests` : 7 outils, tous déclarés avant le démarrage.
+- Vérification en ligne : demander la liste des outils (tools/list) au connecteur après chaque mise à jour.

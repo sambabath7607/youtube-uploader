@@ -301,10 +301,6 @@ class VerifierCle:
             cle_courante.reset(jeton)
 
 
-if __name__ == "__main__":
-    uvicorn.run(VerifierCle(mcp.streamable_http_app()), host=HOTE, port=PORT, log_level="info")
-
-
 @mcp.tool()
 async def fabriquer_voix(texte: str) -> dict:
     """Lit un texte (le script d'une vidéo) avec LA VOIX DE L'UTILISATEUR, enregistrée sur la page « Ma voix » du site.
@@ -374,3 +370,8 @@ async def mon_compte() -> dict:
     if probleme:
         return probleme
     return await anyio.to_thread.run_sync(lire, cle, ADRESSE_COMPTE)
+
+
+# Toujours à la toute fin du fichier : le serveur démarre seulement quand TOUS les outils sont déclarés
+if __name__ == "__main__":
+    uvicorn.run(VerifierCle(mcp.streamable_http_app()), host=HOTE, port=PORT, log_level="info")
