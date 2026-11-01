@@ -1,5 +1,5 @@
 from django.urls import path
-from . import views, oauth, api
+from . import api, depot, oauth, views
 
 urlpatterns = [
 
@@ -13,6 +13,8 @@ urlpatterns = [
     path("ma-voix/essai/", views.essai_ma_voix, name="essai_ma_voix"),
     path("api/v1/videos/", api.api_videos, name="api_videos"),
     path("api/v1/videos/<int:video_id>/", api.api_etat_video, name="api_etat_video"),
+    path("api/v1/envois/", api.api_preparer_envoi, name="api_preparer_envoi"),
+    path("depot/<str:jeton>/", depot.depot_video, name="depot_video"),
     path("api/v1/voix/", api.api_voix, name="api_voix"),
     path("api/v1/voix/<str:travail>/", api.api_etat_voix, name="api_etat_voix"),
 ]

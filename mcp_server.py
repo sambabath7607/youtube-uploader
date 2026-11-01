@@ -30,6 +30,7 @@ load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
 
 ADRESSE_API = os.environ.get("MCP_ADRESSE_API", "https://api.batchcodeia.com/youtube/api/v1/videos/")
 ADRESSE_VOIX = ADRESSE_API.replace("/videos/", "/voix/")
+ADRESSE_ENVOIS = ADRESSE_API.replace("/videos/", "/envois/")
 TAILLE_MAX = 500 * 1024 * 1024
 HOTE, PORT = "127.0.0.1", 8100
 MESSAGE_CONNEXION = "Problème de connexion. Réessaie dans un instant."
@@ -226,6 +227,7 @@ async def envoyer_video(url_video: str, titre: str, pour_enfants: bool, contenu_
     Ne choisis jamais à sa place, même pour un test.
 
     url_video : lien direct et public vers le fichier vidéo (mp4, mov ou webm, 500 Mo maximum).
+    Si la vidéo est sur l'ordinateur (pas de lien public), utilise plutôt preparer_envoi.
     titre : 100 caractères maximum.
     La réponse contient un "id" : utilise ensuite etat_video pour suivre l'envoi.
     """
@@ -329,3 +331,26 @@ async def etat_voix(travail: str) -> dict:
     if probleme:
         return probleme
     return await anyio.to_thread.run_sync(lire, cle, f"{ADRESSE_VOIX}{travail}/")
+
+
+@mcp.tool()
+async def preparer_envoi(titre: str, pour_enfants: bool, contenu_ia: bool, description: str = "") -> dict:
+    """Prépare l'envoi sur YouTube d'une vidéo qui se trouve sur l'ordinateur (par exemple fabriquée avec Remotion).
+
+    Avant d'appeler cet outil, demande TOUJOURS à l'utilisateur :
+    1. si la vidéo est conçue pour les enfants (pour_enfants) ;
+    2. si elle contient des scènes réalistes générées ou modifiées par IA (contenu_ia). Une voix clonée
+       (fabriquer_voix) compte comme contenu IA : contenu_ia = true.
+    Ne choisis jamais à sa place.
+
+    La réponse contient "adresse_depot" : une adresse secrète, valable 1 heure, utilisable une seule fois.
+    Dépose la vidéo dessus avec la commande donnée dans "commande" (curl -F "fichier=@chemin/video.mp4" "adresse"),
+    sans clé d'API. Puis suis l'envoi avec etat_video(id) ; une fois « reussi », supprime le fichier vidéo de
+    l'ordinateur (il n'est plus utile).
+    Formats : mp4, mov ou webm, 500 Mo maximum. Titre : 100 caractères maximum.
+    """
+    cle, probleme = cle_ou_erreur()
+    if probleme:
+        return probleme
+    donnees = {"titre": titre, "description": description, "pour_enfants": pour_enfants, "contenu_ia": contenu_ia}
+    return await anyio.to_thread.run_sync(ecrire, cle, ADRESSE_ENVOIS, donnees)

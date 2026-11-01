@@ -7,7 +7,7 @@ from unittest.mock import patch
 from django.contrib.auth.models import User
 from django.core.management import call_command
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import TestCase, override_settings
+from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework.test import APIClient
@@ -537,3 +537,70 @@ class TesterMaVoixTests(TestCase):
             self.assertContains(self.tester(), "indisponible")
         self.voix.refresh_from_db()
         self.assertEqual(self.voix.essais_du_jour, 0)
+
+
+@override_settings(MEDIA_ROOT=DOSSIER_MEDIA_TEST)
+class PreparerEnvoiTests(TestCase):
+    """Partie 23 : adresse de dépôt à usage unique, sans clé d'API."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username="samba", password="motdepasse123")
+        YouTubeCredentials.objects.create(user=self.user, token_json="{}")
+        self.api = APIClient()
+        self.api.credentials(HTTP_AUTHORIZATION="Token " + CleApi.creer_pour(self.user))
+
+    def preparer(self, **autres):
+        donnees = {"titre": "Les ensembles", "pour_enfants": False, "contenu_ia": True}
+        donnees.update(autres)
+        return self.api.post(reverse("api_preparer_envoi"), donnees, format="json")
+
+    def deposer(self, adresse, nom="video.mp4"):
+        return Client().post(adresse, {"fichier": faux_fichier(nom)})
+
+    def test_preparer_puis_deposer(self):
+        reponse = self.preparer()
+        self.assertEqual(reponse.status_code, 201)
+        video = Video.objects.get(id=reponse.json()["id"])
+        self.assertEqual(video.etat, "attente_fichier")
+        self.assertIn("curl -F", reponse.json()["commande"])
+        depot = self.deposer(reponse.json()["adresse_depot"])
+        self.assertEqual(depot.status_code, 202)
+        video.refresh_from_db()
+        self.assertEqual(video.etat, "en_attente")      # le worker va l'envoyer
+        self.assertTrue(video.fichier)
+        self.assertTrue(video.contenu_ia)
+
+    def test_adresse_utilisable_une_seule_fois(self):
+        adresse = self.preparer().json()["adresse_depot"]
+        self.assertEqual(self.deposer(adresse).status_code, 202)
+        self.assertEqual(self.deposer(adresse).status_code, 409)
+
+    def test_adresse_falsifiee(self):
+        self.assertEqual(Client().post("/youtube/depot/faux:jeton/", {"fichier": faux_fichier()}).status_code, 404)
+
+    def test_adresse_expiree(self):
+        adresse = self.preparer().json()["adresse_depot"]
+        with patch("youtube_uploader.depot.VALIDITE_DEPOT", -1):
+            self.assertEqual(self.deposer(adresse).status_code, 404)
+
+    def test_format_refuse_au_depot(self):
+        adresse = self.preparer().json()["adresse_depot"]
+        self.assertEqual(self.deposer(adresse, "image.png").status_code, 400)
+        self.assertEqual(Video.objects.get().etat, "attente_fichier")   # l'adresse reste utilisable
+
+    def test_pour_enfants_obligatoire(self):
+        reponse = self.api.post(reverse("api_preparer_envoi"), {"titre": "x"}, format="json")
+        self.assertEqual(reponse.status_code, 400)
+        self.assertFalse(Video.objects.exists())
+
+    def test_sans_cle_refuse(self):
+        self.assertEqual(APIClient().post(reverse("api_preparer_envoi"), {}, format="json").status_code, 401)
+
+    def test_limite_par_jour(self):
+        for _ in range(LIMITE_ENVOIS_PAR_JOUR):
+            self.assertEqual(self.preparer().status_code, 201)
+        self.assertEqual(self.preparer().status_code, 429)
+
+    def test_le_worker_ignore_les_videos_sans_fichier(self):
+        self.preparer()
+        self.assertIsNone(prendre_prochaine_video())

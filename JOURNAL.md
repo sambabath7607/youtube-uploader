@@ -451,3 +451,20 @@ Vérifié depuis le PC : /youtube/ma-voix/ → 302 (connexion demandée), API de
 - Service Modal redéployé (`modal deploy voix_modal/service.py`) : `lire(texte, reference, debut=0)` reste compatible.
 - Test réel de `essayer` : 3 propositions (passages 0 s, 15,8 s, 30,7 s) en 84 s.
 - Tests : 2 (écoute) + 6 (TesterMaVoixTests) → 79 tests OK.
+
+---
+
+## Partie 23 : adresse de dépôt à usage unique (sur le PC, 31 octobre 2026)
+But : Claude Code envoie sur YouTube une vidéo fabriquée sur l'ordinateur, SANS clé d'API sur le PC (la clé reste
+dans le connecteur claude.ai). Pour chaque utilisateur, sur son propre compte.
+- youtube_uploader/models.py : états `attente_fichier` (adresse donnée) et `reception` ; migration 0006.
+- youtube_uploader/serializers.py : `PreparationEnvoiSerializer` (mêmes règles, sans le fichier).
+- youtube_uploader/api.py : POST /youtube/api/v1/envois/ (clé du connecteur) → vérifie chaîne + limite du jour +
+  « pour les enfants » obligatoire, crée la vidéo « attente_fichier », renvoie `adresse_depot` + `commande` curl.
+- youtube_uploader/depot.py : POST /youtube/depot/<jeton>/ sans clé ; jeton signé lié à la vidéo, valable 1 h ;
+  une seule fois (réservation atomique) ; format et taille vérifiés ; puis « en_attente » → le worker publie.
+- mcp_server.py : outil `preparer_envoi(titre, pour_enfants, contenu_ia, description)` ; la description demande à
+  Claude de poser les 2 questions, de déposer avec curl, de suivre etat_video puis d'effacer le fichier local.
+- Tests PreparerEnvoiTests (9) : préparer + déposer, une seule fois, falsifiée, expirée, format refusé,
+  « pour les enfants » obligatoire, sans clé, limite du jour, le worker ignore les vidéos sans fichier.
+  88 tests OK (7 sautés sans le paquet mcp).

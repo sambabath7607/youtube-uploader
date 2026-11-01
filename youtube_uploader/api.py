@@ -10,7 +10,8 @@ from rest_framework.throttling import UserRateThrottle
 from accounts.authentification import CleApiAuthentication
 from .envois import probleme_avant_envoi
 from .models import Video, VoixUtilisateur
-from .serializers import VideoSerializer
+from .depot import adresse_depot
+from .serializers import PreparationEnvoiSerializer, VideoSerializer
 from .voix import (etat_lecture, jeton_travail, lancer_lecture, lire_jeton, quota_restant,
                    secondes_estimees)
 
@@ -128,3 +129,27 @@ def api_etat_voix(request, travail):
         return Response({"etat": "en_cours"})
     return Response({"etat": "pret", "url_audio": resultat["url"], "duree": resultat["duree_audio"],
                      "minutage": resultat["minutage"]})
+
+
+@api_view(["POST"])
+@authentication_classes([CleApiAuthentication])
+@permission_classes([IsAuthenticated])
+@throttle_classes([LimiteRequetes])
+def api_preparer_envoi(request):
+    """Réserve un envoi et renvoie une adresse de dépôt à usage unique (1 h) pour le fichier vidéo."""
+    probleme = probleme_avant_envoi(request.user)
+    if probleme:
+        message, code = probleme
+        statut = status.HTTP_429_TOO_MANY_REQUESTS if code == "limite_envois_atteinte" else status.HTTP_400_BAD_REQUEST
+        return erreur(message, code, statut)
+    serializer = PreparationEnvoiSerializer(data=request.data)
+    if not serializer.is_valid():
+        return erreur("Données invalides.", "donnees_invalides", status.HTTP_400_BAD_REQUEST, serializer.errors)
+    video = serializer.save(user=request.user, etat="attente_fichier", fichier="")
+    adresse = adresse_depot(request, video)
+    return Response({
+        "id": video.id,
+        "adresse_depot": adresse,
+        "expire_dans_secondes": 3600,
+        "commande": f'curl -F "fichier=@CHEMIN_DE_LA_VIDEO" "{adresse}"',
+    }, status=status.HTTP_201_CREATED)

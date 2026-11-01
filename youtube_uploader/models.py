@@ -19,6 +19,8 @@ class YouTubeCredentials(models.Model):
 
 class Video(models.Model):
     ETATS = [
+        ("attente_fichier", "En attente du fichier"),   # adresse de dépôt donnée, vidéo pas encore reçue
+        ("reception", "Réception du fichier"),
         ("en_attente", "En attente"),
         ("en_cours", "En cours"),
         ("reussi", "Réussi"),

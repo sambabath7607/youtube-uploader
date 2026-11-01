@@ -25,3 +25,12 @@ class VideoSerializer(serializers.ModelSerializer):
         if probleme:
             raise serializers.ValidationError(probleme)
         return fichier
+
+
+class PreparationEnvoiSerializer(serializers.ModelSerializer):
+    """Mêmes règles que VideoSerializer, sans le fichier : il sera déposé à l'adresse à usage unique."""
+    pour_enfants = ChampOuiNon()
+
+    class Meta:
+        model = Video
+        fields = ["id", "titre", "description", "pour_enfants", "contenu_ia"]
