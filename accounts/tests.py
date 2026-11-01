@@ -110,19 +110,44 @@ class DonneesEtSuppressionTests(TestCase):
 
 class PagesPubliquesTests(TestCase):
     def test_pages_legales_accessibles_sans_compte(self):
-        for nom in ["confidentialite", "conditions"]:
+        for nom in ["confidentialite", "conditions", "guide_claude"]:
             reponse = self.client.get(reverse(nom))
             self.assertEqual(reponse.status_code, 200)
-            self.assertContains(reponse, "youtube.com/t/terms")
+            if nom != "guide_claude":
+                self.assertContains(reponse, "youtube.com/t/terms")
 
     def test_accueil_affiche_les_liens(self):
         User.objects.create_user(username="samba", password="motdepasse123")
         self.client.login(username="samba", password="motdepasse123")
         reponse = self.client.get(reverse("accueil"))
-        for nom in ["ma_cle", "mes_donnees", "supprimer_compte", "nouvelle_video", "conditions", "confidentialite", "ma_voix"]:
+        for nom in ["ma_cle", "mes_donnees", "supprimer_compte", "nouvelle_video", "conditions", "confidentialite", "ma_voix", "guide_claude"]:
             self.assertContains(reponse, reverse(nom))
 
     def test_style_servi_par_le_site_sans_cdn(self):
         reponse = self.client.get(reverse("conditions"))
         self.assertContains(reponse, "css/pico-2.1.1.min.css")
         self.assertNotContains(reponse, "cdn.jsdelivr.net")
+
+
+class GuideClaudeTests(TestCase):
+    def test_prompt_general_et_outils(self):
+        reponse = self.client.get(reverse("guide_claude"))
+        self.assertEqual(reponse.status_code, 200)
+        for mot in ["fabriquer_voix", "preparer_envoi", "etat_video", "x-api-key", "Copier le prompt"]:
+            self.assertContains(reponse, mot)
+
+
+class BoutonClaudeTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="samba", password="motdepasse123")
+        self.client.login(username="samba", password="motdepasse123")
+
+    def test_bouton_absent_sans_chaine_youtube(self):
+        self.assertNotContains(self.client.get(reverse("accueil")), "Envoyer une vidéo avec Claude")
+
+    def test_bouton_avec_chaine_youtube(self):
+        YouTubeCredentials.objects.create(user=self.user, token_json="{}")
+        reponse = self.client.get(reverse("accueil"))
+        self.assertContains(reponse, "Envoyer une vidéo avec Claude")
+        self.assertContains(reponse, "https://claude.ai/new?q=Avec%20le%20connecteur%20Batch%20Code%20IA")
+        self.assertContains(reponse, "Autres agents IA (bientôt)")

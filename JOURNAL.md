@@ -468,3 +468,34 @@ dans le connecteur claude.ai). Pour chaque utilisateur, sur son propre compte.
 - Tests PreparerEnvoiTests (9) : préparer + déposer, une seule fois, falsifiée, expirée, format refusé,
   « pour les enfants » obligatoire, sans clé, limite du jour, le worker ignore les vidéos sans fichier.
   88 tests OK (7 sautés sans le paquet mcp).
+
+## Documentation : page « Utiliser avec Claude » (31 octobre 2026, sur le PC)
+- Nouvelle page publique /guide-claude/ (template/accounts/guide_claude.html, vue accounts.guide_claude) :
+  préparer son compte (YouTube, Ma voix + Tester ma voix, Ma clé, connecteur claude.ai avec x-api-key),
+  **prompt général** à copier (bouton « Copier le prompt ») qui explique à Claude les outils et la façon de
+  travailler (plan d'abord, voix, Remotion, 2 questions YouTube, preparer_envoi, limites, réponses courtes),
+  tableau des demandes types, tableau « Claude Code / claude.ai-téléphone ».
+- Liens : accueil (🤖 Utiliser avec Claude) et Guide de l'API (section 6). README : section « Utiliser avec Claude ».
+- Test GuideClaudeTests. 89 tests OK.
+- Le prompt de fabrication d'une vidéo de cours (méthode de Samba, sources PowerPoint) est dans la conversation ;
+  texte du cours extrait dans Bureau\video-batchcodeia\cours\cours_python_complet.txt.
+
+## Bouton « Envoyer une vidéo avec Claude » + autres agents IA (31 octobre 2026, sur le PC)
+- Diagnostic de la conversation « Ensembles Python » : elle ne voyait que 3 outils. En interrogeant le connecteur
+  en ligne (tools/list), il ne proposait que envoyer_video, etat_video, mes_videos → le service youtube-mcp du
+  serveur tournait encore avec l'ancien code (pas redémarré). À faire : `sudo systemctl restart youtube-mcp`
+  après chaque `git pull` qui touche mcp_server.py. Les conversations déjà ouvertes gardent l'ancienne liste.
+- Accueil : si la chaîne YouTube est connectée, section « Créer une vidéo avec un agent IA » :
+  bouton « 🤖 Envoyer une vidéo avec Claude » (https://claude.ai/new?q=<demande déjà écrite>, nouvel onglet)
+  et bouton désactivé « Autres agents IA (bientôt) ». Lien vers « Utiliser avec Claude » pour la 1re fois.
+  Vérifié : claude.ai garde la demande (?q=) à travers la page de connexion ; à confirmer par un clic de Samba.
+- Guide « Utiliser avec Claude » : sections « Depuis la plateforme » et « Et les autres agents IA ? ».
+- Tests BoutonClaudeTests (2). 91 tests OK.
+
+### Feuille de route : autres agents IA (demande de Samba, à faire après validation avec Claude)
+| Agent | MCP | À vérifier / à faire |
+|---|---|---|
+| Claude (claude.ai, Claude Code) | ✅ | Fonctionne (en-tête x-api-key) |
+| ChatGPT | connecteurs MCP | Leur mode d'authentification (souvent OAuth) ; documentation officielle à lire |
+| Cursor, VS Code, Gemini… | MCP | Mode d'ajout et d'authentification de chacun |
+| Pour tous | — | Connexion en un clic (OAuth, spécification MCP 2026-07-28) : rend le connecteur compatible avec le plus d'agents |

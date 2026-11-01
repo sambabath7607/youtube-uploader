@@ -10,9 +10,15 @@ from .forms import InscriptionForm
 from .models import CleApi
 
 
+# Demande déjà écrite quand l'utilisateur ouvre Claude depuis l'accueil (bouton « Envoyer une vidéo avec Claude »)
+DEMANDE_CLAUDE = ("Avec le connecteur Batch Code IA, aide-moi à créer une vidéo avec ma voix et à la publier "
+                  "sur ma chaîne YouTube. Commence par me demander le sujet, puis montre-moi le plan avant de continuer.")
+ADRESSE_CLAUDE = "https://claude.ai/new"
+
+
 @login_required
 def accueil(request):
-    return render(request, "accounts/accueil.html")
+    return render(request, "accounts/accueil.html", {"adresse_claude": ADRESSE_CLAUDE, "demande_claude": DEMANDE_CLAUDE})
 
 
 def inscription(request):
@@ -93,3 +99,7 @@ def conditions_utilisation(request):
 
 def guide_api(request):
     return render(request, "accounts/guide_api.html")
+
+
+def guide_claude(request):
+    return render(request, "accounts/guide_claude.html")

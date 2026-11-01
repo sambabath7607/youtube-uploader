@@ -13,4 +13,5 @@ urlpatterns = [
     path("conditions/", views.conditions_utilisation, name="conditions"),
     path("", views.accueil, name="accueil"),
     path("guide-api/", views.guide_api, name="guide_api"),
+    path("guide-claude/", views.guide_claude, name="guide_claude"),
 ]

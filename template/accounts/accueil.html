@@ -16,6 +16,17 @@
     <a href="{% url 'connecter_youtube' %}">Connecter ma chaîne YouTube</a>
 {% endif %}
 
+{% if user.youtubecredentials %}
+<h2>Créer une vidéo avec un agent IA</h2>
+<p>L'agent IA écrit le script, le lit avec ta voix, fabrique la vidéo et la publie sur ta chaîne.</p>
+<p>
+    <a role="button" href="{{ adresse_claude }}?q={{ demande_claude|urlencode:'' }}" target="_blank" rel="noopener">🤖 Envoyer une vidéo avec Claude</a>
+    <button type="button" class="secondary" disabled>Autres agents IA (bientôt)</button>
+</p>
+<p><small>Première fois ? Ajoute d'abord le connecteur Batch Code IA dans Claude :
+    <a href="{% url 'guide_claude' %}">Utiliser avec Claude</a>.</small></p>
+
+{% endif %}
 <h2>Ma voix pour les vidéos</h2>
 {% if user.voix.extrait %}
     <p>Voix enregistrée ✅ — {{ user.voix.get_mode_display }}</p>
@@ -28,6 +39,7 @@
 <ul>
     <li><a href="{% url 'nouvelle_video' %}">Envoyer une vidéo</a></li>
     <li><a href="{% url 'ma_cle' %}">Ma clé d'API</a></li>
+    <li><a href="{% url 'guide_claude' %}">🤖 Utiliser avec Claude</a></li>
     <li><a href="{% url 'guide_api' %}">Guide de l'API</a></li>
 </ul>
 

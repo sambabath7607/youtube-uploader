@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block titre %}Utiliser avec Claude – Batch Code IA{% endblock %}
+{% block description %}Créer et publier des vidéos YouTube avec Claude et ta propre voix, grâce au connecteur Batch Code IA.{% endblock %}
+
+{% block contenu %}
+<h1>Utiliser la plateforme avec Claude</h1>
+<p>Avec le connecteur <strong>Batch Code IA</strong>, Claude peut lire un texte avec ta voix, fabriquer une vidéo
+et la publier sur ta chaîne YouTube. Tu n'installes rien et tu ne tapes aucune commande.</p>
+
+<h2>1. Une seule fois : préparer ton compte</h2>
+<ol>
+    <li><a href="{% url 'inscription' %}">Crée ton compte</a> puis, sur l'accueil, <strong>connecte ta chaîne YouTube</strong>.</li>
+    <li>Sur <a href="{% url 'ma_voix' %}">Ma voix</a> : enregistre ta voix (1 minute), choisis « En ligne »,
+        puis <strong>Tester ma voix</strong> et clique « ✅ C'est ma voix » sous la meilleure proposition.</li>
+    <li>Sur <a href="{% url 'ma_cle' %}">Ma clé</a> : crée une clé et copie-la (elle ne s'affiche qu'une fois).</li>
+    <li>Dans claude.ai : <strong>Customize → Connectors → + Add → Add custom connector</strong>
+        <ul>
+            <li>URL : <code>https://api.batchcodeia.com/mcp</code></li>
+            <li>Authentication : <strong>No sign in</strong></li>
+            <li>Request headers : nom <code>x-api-key</code>, valeur = ta clé (sans le mot « Token »)</li>
+        </ul>
+        Le connecteur apparaît aussi dans Claude Code (onglet Code de l'application Claude), sans rien faire.
+    </li>
+</ol>
+
+<h2>2. Le prompt général à donner à Claude</h2>
+<p>Colle ce texte au début d'une nouvelle conversation : Claude comprendra ce que la plateforme sait faire
+et comment utiliser ses outils.</p>
+<pre id="prompt-general">Tu m'aides à créer et publier des vidéos YouTube avec la plateforme Batch Code IA (api.batchcodeia.com).
+Utilise UNIQUEMENT les outils du connecteur « Batch Code IA ». Ne me demande jamais de clé d'API ni de commande.
+
+Outils disponibles :
+- fabriquer_voix(texte) : lit un texte avec MA voix (enregistrée sur la page « Ma voix » du site).
+  Puis etat_voix(travail) toutes les 20 secondes jusqu'à « pret » : tu reçois url_audio et le minutage de chaque paragraphe.
+- preparer_envoi(titre, pour_enfants, contenu_ia, description) : donne une adresse de dépôt secrète
+  (valable 1 heure, une seule fois) pour envoyer sur ma chaîne une vidéo qui se trouve sur l'ordinateur.
+- envoyer_video(url_video, ...) : seulement si la vidéo a déjà un lien public.
+- etat_video(id) : suit l'envoi (en_attente, en_cours, reussi, echoue) ; mes_videos() : liste mes envois.
+
+Façon de travailler :
+1. Écris le script (un paragraphe = une scène, séparés par une ligne vide) et montre-moi le plan avant de continuer.
+2. Fabrique la voix, puis la vidéo avec Remotion (1920×1080), calée sur le minutage. Vérifie quelques images avant le rendu.
+   Les vidéos Remotion se fabriquent avec Claude Code sur ordinateur ; sans terminal (claude.ai, téléphone),
+   propose-moi seulement l'audio.
+3. Avant tout envoi, pose-moi TOUJOURS les 2 questions de YouTube : la vidéo est-elle conçue pour les enfants ?
+   contient-elle des scènes réalistes générées par IA ? (une voix clonée compte comme contenu IA). Ne choisis jamais à ma place.
+4. Envoie avec preparer_envoi, suis etat_video jusqu'à « reussi », donne-moi le lien YouTube,
+   puis supprime les fichiers temporaires (audio, vidéo).
+5. Limites : 5 envois par jour, 10 minutes de voix par mois. En cas d'erreur (quota_voix_atteint, voix_absente,
+   limite_envois_atteinte…), arrête-toi et explique-moi simplement quoi faire.
+6. Réponds en français, avec des réponses courtes et un tableau récapitulatif à chaque étape.</pre>
+<button type="button" id="copier-prompt">Copier le prompt</button>
+<span id="prompt-copie" hidden>Prompt copié.</span>
+
+<h2>3. Ce que tu peux demander à Claude</h2>
+<table>
+    <thead><tr><th>Tu veux…</th><th>Demande à Claude</th></tr></thead>
+    <tbody>
+        <tr><td>Vérifier que tout marche</td><td>« Avec Batch Code IA, liste mes vidéos envoyées. »</td></tr>
+        <tr><td>Entendre ta voix sur un texte</td><td>« Lis ce texte avec ma voix et donne-moi le lien de l'audio : … »</td></tr>
+        <tr><td>Créer une vidéo de cours</td><td>« Crée une vidéo de 5 minutes sur les boucles en Python avec ma voix, montre-moi le plan d'abord. »</td></tr>
+        <tr><td>Partir de tes supports</td><td>« Utilise mon PowerPoint (chemin du fichier) pour la partie sur les dictionnaires et fais-en une vidéo. »</td></tr>
+        <tr><td>Publier une vidéo déjà faite</td><td>« Publie la vidéo C:\…\video.mp4 sur ma chaîne avec le titre … »</td></tr>
+        <tr><td>Suivre un envoi</td><td>« Où en est l'envoi de ma dernière vidéo ? »</td></tr>
+        <tr><td>Connaître tes limites</td><td>« Combien de minutes de voix me reste-t-il ce mois-ci ? » (visible aussi sur la page Ma voix)</td></tr>
+    </tbody>
+</table>
+
+<h2>4. Où ça marche</h2>
+<table>
+    <thead><tr><th></th><th>Claude Code (ordinateur)</th><th>claude.ai / téléphone</th></tr></thead>
+    <tbody>
+        <tr><td>Lire un texte avec ta voix</td><td>✅</td><td>✅</td></tr>
+        <tr><td>Fabriquer une vidéo Remotion</td><td>✅</td><td>❌</td></tr>
+        <tr><td>Publier une vidéo de l'ordinateur</td><td>✅ (preparer_envoi)</td><td>❌</td></tr>
+        <tr><td>Publier une vidéo qui a un lien public</td><td>✅</td><td>✅ (envoyer_video)</td></tr>
+        <tr><td>Suivre et lister tes envois</td><td>✅</td><td>✅</td></tr>
+    </tbody>
+</table>
+
+<h2>5. Depuis la plateforme</h2>
+<p>Sur l'accueil, une fois ta chaîne YouTube connectée, le bouton <strong>🤖 Envoyer une vidéo avec Claude</strong>
+ouvre une nouvelle conversation Claude avec la demande déjà écrite. Il suffit de l'envoyer.</p>
+
+<h2>6. Et les autres agents IA ?</h2>
+<p>Le connecteur utilise le protocole ouvert MCP : il pourra servir à d'autres agents (ChatGPT, Cursor, VS Code…).
+Pour l'instant, la plateforme est testée et documentée avec Claude ; les autres agents arriveront ensuite.</p>
+
+<h2>7. Bon à savoir</h2>
+<ul>
+    <li>Les vidéos arrivent sur ta chaîne avec la visibilité réglée par YouTube ; tu peux la changer dans YouTube Studio.</li>
+    <li>Ta voix ne sert qu'à tes vidéos : personne d'autre ne peut l'utiliser, et tu peux la supprimer à tout moment.</li>
+    <li>Plus de détails techniques : <a href="{% url 'guide_api' %}">Guide de l'API</a>.</li>
+</ul>
+
+<script>
+    document.getElementById("copier-prompt").addEventListener("click", function () {
+        navigator.clipboard.writeText(document.getElementById("prompt-general").textContent).then(function () {
+            document.getElementById("prompt-copie").hidden = false;
+        });
+    });
+</script>
+{% endblock %}
