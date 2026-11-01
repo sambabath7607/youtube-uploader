@@ -7,8 +7,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
 
-from accounts.authentification import CleApiAuthentication
-from .envois import probleme_avant_envoi
+from accounts.authentification import AUTHENTIFICATIONS
+from .envois import envoi_en_double, probleme_avant_envoi
 from .models import Video, VoixUtilisateur, YouTubeCredentials
 from .depot import adresse_depot
 from .serializers import PreparationEnvoiSerializer, VideoSerializer
@@ -37,7 +37,7 @@ def erreur(message, code, statut, details=None):
 
 
 @api_view(["GET", "POST"])
-@authentication_classes([CleApiAuthentication])
+@authentication_classes(AUTHENTIFICATIONS)
 @permission_classes([IsAuthenticated])
 @throttle_classes([LimiteRequetes])
 def api_videos(request):
@@ -57,12 +57,16 @@ def api_videos(request):
     serializer = VideoSerializer(data=request.data)
     if not serializer.is_valid():
         return erreur("Données invalides.", "donnees_invalides", status.HTTP_400_BAD_REQUEST, serializer.errors)
+    doublon = envoi_en_double(request.user, serializer.validated_data["titre"])
+    if doublon is not None:
+        return erreur(f"Cette vidéo est déjà en cours d'envoi (n° {doublon.id}) : suis-la avec etat_video.",
+                      "envoi_en_double", status.HTTP_409_CONFLICT, {"id": doublon.id})
     video = serializer.save(user=request.user)
     return Response(VideoSerializer(video).data, status=status.HTTP_202_ACCEPTED)
 
 
 @api_view(["GET"])
-@authentication_classes([CleApiAuthentication])
+@authentication_classes(AUTHENTIFICATIONS)
 @permission_classes([IsAuthenticated])
 @throttle_classes([LimiteRequetes])
 def api_etat_video(request, video_id):
@@ -78,7 +82,7 @@ def duree_lisible(secondes):
 
 
 @api_view(["POST"])
-@authentication_classes([CleApiAuthentication])
+@authentication_classes(AUTHENTIFICATIONS)
 @permission_classes([IsAuthenticated])
 @throttle_classes([LimiteRequetes])
 def api_voix(request):
@@ -114,7 +118,7 @@ def api_voix(request):
 
 
 @api_view(["GET"])
-@authentication_classes([CleApiAuthentication])
+@authentication_classes(AUTHENTIFICATIONS)
 @permission_classes([IsAuthenticated])
 @throttle_classes([LimiteRequetes])
 def api_etat_voix(request, travail):
@@ -133,7 +137,7 @@ def api_etat_voix(request, travail):
 
 
 @api_view(["POST"])
-@authentication_classes([CleApiAuthentication])
+@authentication_classes(AUTHENTIFICATIONS)
 @permission_classes([IsAuthenticated])
 @throttle_classes([LimiteRequetes])
 def api_preparer_envoi(request):
@@ -146,7 +150,12 @@ def api_preparer_envoi(request):
     serializer = PreparationEnvoiSerializer(data=request.data)
     if not serializer.is_valid():
         return erreur("Données invalides.", "donnees_invalides", status.HTTP_400_BAD_REQUEST, serializer.errors)
-    video = serializer.save(user=request.user, etat="attente_fichier", fichier="")
+    doublon = envoi_en_double(request.user, serializer.validated_data["titre"])
+    if doublon is not None and doublon.etat != "attente_fichier":
+        return erreur(f"Cette vidéo est déjà en cours d'envoi (n° {doublon.id}) : suis-la avec etat_video.",
+                      "envoi_en_double", status.HTTP_409_CONFLICT, {"id": doublon.id})
+    # Même demande répétée (Claude a réessayé) : on redonne une adresse pour le même envoi au lieu d'en créer un 2e
+    video = doublon or serializer.save(user=request.user, etat="attente_fichier", fichier="")
     adresse = adresse_depot(request, video)
     return Response({
         "id": video.id,
@@ -156,8 +165,21 @@ def api_preparer_envoi(request):
     }, status=status.HTTP_201_CREATED)
 
 
+def preferences_publication(user):
+    """Réponses par défaut aux questions de YouTube ; None = « demander à l'utilisateur »."""
+    from .models import PreferencesPublication
+    prefs = PreferencesPublication.objects.filter(user=user).first()
+    return {
+        "pour_enfants": prefs.pour_enfants if prefs else None,
+        "contenu_ia": prefs.contenu_ia if prefs else None,
+        "visibilite": (prefs.visibilite or None) if prefs else None,
+        "regle": "Une valeur null = pose la question à l'utilisateur. Sinon utilise la valeur sans redemander "
+                 "et rappelle-la dans ton récapitulatif.",
+    }
+
+
 @api_view(["GET"])
-@authentication_classes([CleApiAuthentication])
+@authentication_classes(AUTHENTIFICATIONS)
 @permission_classes([IsAuthenticated])
 @throttle_classes([LimiteRequetes])
 def api_mon_compte(request):
@@ -176,6 +198,7 @@ def api_mon_compte(request):
         },
         "envois_restants_aujourd_hui": max(0, LIMITE_ENVOIS_PAR_JOUR - envois_du_jour),
         "voix": {"enregistree": False},
+        "preferences_publication": preferences_publication(request.user),
     }
     if voix is not None and voix.extrait and voix.consentement_le:
         restant = quota_restant(voix)

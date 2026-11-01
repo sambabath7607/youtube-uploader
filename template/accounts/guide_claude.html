@@ -12,12 +12,13 @@ et la publier sur ta chaîne YouTube. Tu n'installes rien et tu ne tapes aucune 
     <li><a href="{% url 'inscription' %}">Crée ton compte</a> puis, sur l'accueil, <strong>connecte ta chaîne YouTube</strong>.</li>
     <li>Sur <a href="{% url 'ma_voix' %}">Ma voix</a> : enregistre ta voix (1 minute), choisis « En ligne »,
         puis <strong>Tester ma voix</strong> et clique « ✅ C'est ma voix » sous la meilleure proposition.</li>
-    <li>Sur <a href="{% url 'ma_cle' %}">Ma clé</a> : crée une clé et copie-la (elle ne s'affiche qu'une fois).</li>
-    <li>Ajoute le connecteur une seule fois, sur claude.ai : <strong>Customize → Connectors → + Add → Add custom connector</strong>
+    <li>Ajoute le connecteur une seule fois, sur claude.ai : <strong>Customize → Connectors → + Add → Add custom connector</strong>,
+        URL <code>https://api.batchcodeia.com/mcp</code>, puis :
         <ul>
-            <li>URL : <code>https://api.batchcodeia.com/mcp</code></li>
-            <li>Authentication : <strong>No sign in</strong></li>
-            <li>Request headers : nom <code>x-api-key</code>, valeur = ta clé (sans le mot « Token »)</li>
+            <li><strong>Connexion en un clic (recommandé)</strong> : Authentication « Sign in ». Claude ouvre la page
+                « Autoriser » du site : clique sur ✅ Autoriser. Aucune clé à copier.</li>
+            <li><em>ou</em> avec une clé : Authentication « No sign in », crée une clé sur
+                <a href="{% url 'ma_cle' %}">Mes clés</a> et mets-la dans Request headers, nom <code>x-api-key</code>.</li>
         </ul>
         Le connecteur apparaît ensuite tout seul dans Claude Code (onglet « Code » de l'application Claude).
     </li>
@@ -91,9 +92,33 @@ Façon de travailler :
 </ol>
 <p><small>claude.ai (navigateur ou téléphone) sait seulement lire un texte avec ta voix et suivre tes envois : il ne fabrique pas de vidéo.</small></p>
 
-<h2>6. Et les autres agents IA ?</h2>
-<p>Le connecteur utilise le protocole ouvert MCP : il pourra servir à d'autres agents (ChatGPT, Cursor, VS Code…).
-Pour l'instant, la plateforme est testée et documentée avec Claude ; les autres agents arriveront ensuite.</p>
+<h2 id="autres-agents">6. Les autres agents IA</h2>
+<p>Le connecteur utilise le protocole ouvert <strong>MCP</strong> : il marche avec les agents qui acceptent les
+connecteurs MCP distants. Adresse : <code>https://api.batchcodeia.com/mcp</code>. Connexion : en un clic (OAuth),
+ou avec une clé de la page <a href="{% url 'ma_cle' %}">Mes clés</a> (une clé par agent).
+<strong>Seul Claude a été testé</strong> : les réglages ci-dessous suivent la documentation de chaque agent, à confirmer.</p>
+<table>
+    <thead><tr><th>Agent</th><th>Où l'ajouter</th><th>Réglage</th></tr></thead>
+    <tbody>
+        <tr><td>Claude Code (terminal)</td><td>Commande</td><td><code>claude mcp add --transport http batchcodeia https://api.batchcodeia.com/mcp</code>, puis <code>/mcp</code> pour se connecter en un clic</td></tr>
+        <tr><td>ChatGPT</td><td>Paramètres → Applications / Connecteurs (mode développeur)</td><td>Adresse du connecteur, authentification <strong>OAuth</strong> (connexion en un clic)</td></tr>
+        <tr><td>Cursor</td><td>Fichier <code>~/.cursor/mcp.json</code></td><td><pre>{"mcpServers": {"batchcodeia": {
+  "url": "https://api.batchcodeia.com/mcp",
+  "headers": {"x-api-key": "TA_CLE"}}}}</pre></td></tr>
+        <tr><td>VS Code (Copilot)</td><td>Fichier <code>.vscode/mcp.json</code></td><td><pre>{"servers": {"batchcodeia": {
+  "type": "http",
+  "url": "https://api.batchcodeia.com/mcp",
+  "headers": {"x-api-key": "TA_CLE"}}}}</pre></td></tr>
+        <tr><td>Gemini CLI</td><td>Fichier <code>~/.gemini/settings.json</code></td><td><pre>{"mcpServers": {"batchcodeia": {
+  "httpUrl": "https://api.batchcodeia.com/mcp",
+  "headers": {"x-api-key": "TA_CLE"}}}}</pre></td></tr>
+        <tr><td>Windsurf</td><td>Fichier <code>mcp_config.json</code></td><td><pre>{"mcpServers": {"batchcodeia": {
+  "serverUrl": "https://api.batchcodeia.com/mcp",
+  "headers": {"x-api-key": "TA_CLE"}}}}</pre></td></tr>
+    </tbody>
+</table>
+<p><small>Remplace <code>TA_CLE</code> par une clé créée pour cet agent. La fabrication de vidéos Remotion demande un
+agent qui peut lancer des commandes sur ton ordinateur (Claude Code, Cursor, VS Code, Gemini CLI, Windsurf).</small></p>
 
 <h2>7. Bon à savoir</h2>
 <ul>

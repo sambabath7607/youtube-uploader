@@ -1,5 +1,5 @@
 import json
-from datetime import date
+from datetime import date, timedelta
 import shutil
 import tempfile
 from unittest.mock import patch
@@ -77,8 +77,8 @@ class ApiVideosTests(TestCase):
         self.assertEqual(reponse.json()["code"], "youtube_non_connecte")
 
     def test_limite_envois_par_jour(self):
-        for _ in range(LIMITE_ENVOIS_PAR_JOUR):
-            self.assertEqual(self.envoyer().status_code, 202)
+        for i in range(LIMITE_ENVOIS_PAR_JOUR):
+            self.assertEqual(self.envoyer(titre=f"Vidéo {i}").status_code, 202)
         reponse = self.envoyer()
         self.assertEqual(reponse.status_code, 429)
         self.assertEqual(reponse.json()["code"], "limite_envois_atteinte")
@@ -597,8 +597,8 @@ class PreparerEnvoiTests(TestCase):
         self.assertEqual(APIClient().post(reverse("api_preparer_envoi"), {}, format="json").status_code, 401)
 
     def test_limite_par_jour(self):
-        for _ in range(LIMITE_ENVOIS_PAR_JOUR):
-            self.assertEqual(self.preparer().status_code, 201)
+        for i in range(LIMITE_ENVOIS_PAR_JOUR):
+            self.assertEqual(self.preparer(titre=f"Vidéo {i}").status_code, 201)
         self.assertEqual(self.preparer().status_code, 429)
 
     def test_le_worker_ignore_les_videos_sans_fichier(self):
@@ -645,3 +645,107 @@ class VisibiliteEtChaineTests(TestCase):
 
     def test_mon_compte_sans_cle_refuse(self):
         self.assertEqual(APIClient().get(reverse("api_mon_compte")).status_code, 401)
+
+
+@override_settings(MEDIA_ROOT=DOSSIER_MEDIA_TEST)
+class TachesAutomatiquesTests(TestCase):
+    """C6 abandon, A3 règle des 30 jours, A4 révocation, D2 sauvegarde, C8 courriels, C7 doublons."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username="samba", password="motdepasse123", email="samba@exemple.com")
+        YouTubeCredentials.objects.create(user=self.user, token_json="{}", chaine_titre="BATCH CODE AI",
+                                          chaine_maj_le=timezone.now())
+
+    def test_envoi_abandonne_supprime_apres_1_heure(self):
+        from .envois import nettoyer_envois_abandonnes
+        video = Video.objects.create(user=self.user, titre="T", pour_enfants=False, etat="attente_fichier", fichier="")
+        Video.objects.filter(id=video.id).update(created_at=timezone.now() - timedelta(hours=2))
+        self.assertEqual(nettoyer_envois_abandonnes(), 1)
+        self.assertFalse(Video.objects.exists())
+
+    def test_regle_des_30_jours(self):
+        from .envois import appliquer_regle_30_jours
+        video = Video.objects.create(user=self.user, titre="T", pour_enfants=False, etat="reussi", fichier="",
+                                     youtube_id="abc", envoye_le=timezone.now() - timedelta(days=31))
+        YouTubeCredentials.objects.filter(user=self.user).update(chaine_maj_le=timezone.now() - timedelta(days=31))
+        appliquer_regle_30_jours()
+        video.refresh_from_db()
+        self.assertEqual(video.youtube_id, "")
+        self.assertEqual(YouTubeCredentials.objects.get(user=self.user).chaine_titre, "")
+
+    def test_revocation_chez_google_efface_les_donnees(self):
+        from google.auth.exceptions import RefreshError
+        from django.core import mail
+        Video.objects.create(user=self.user, titre="Ancienne", pour_enfants=False, etat="reussi", fichier="", youtube_id="xyz")
+        Video.objects.create(user=self.user, titre="T", pour_enfants=False, fichier=faux_fichier())
+        with patch("youtube_uploader.envois.upload_video", side_effect=RefreshError("invalid_grant")):
+            call_command("traiter_envois", "--une-fois")
+        self.assertFalse(YouTubeCredentials.objects.filter(user=self.user).exists())
+        self.assertFalse(Video.objects.exclude(youtube_id="").exists())
+        self.assertIn("Reconnecte", mail.outbox[0].subject)
+
+    @patch("youtube_uploader.envois.upload_video", return_value={"id": "abc", "snippet": {}})
+    def test_courriel_video_en_ligne(self, upload):
+        from django.core import mail
+        Video.objects.create(user=self.user, titre="Les ensembles", pour_enfants=False, fichier=faux_fichier())
+        call_command("traiter_envois", "--une-fois")
+        self.assertIn("Les ensembles", mail.outbox[0].subject)
+        self.assertIn("https://youtu.be/abc", mail.outbox[0].body)
+
+    def test_sauvegarde_quotidienne(self):
+        from .envois import sauvegarder_base
+        dossier = tempfile.mkdtemp()
+        try:
+            premiere = sauvegarder_base(dossier)
+            self.assertTrue(premiere.exists())
+            self.assertIsNone(sauvegarder_base(dossier))   # moins de 24 h : pas de 2e copie
+        finally:
+            shutil.rmtree(dossier, ignore_errors=True)
+
+    def test_pas_de_doublon_preparer_envoi(self):
+        client = APIClient()
+        client.credentials(HTTP_AUTHORIZATION="Token " + CleApi.creer_pour(self.user))
+        donnees = {"titre": "Les ensembles", "pour_enfants": False}
+        premiere = client.post(reverse("api_preparer_envoi"), donnees, format="json").json()
+        deuxieme = client.post(reverse("api_preparer_envoi"), donnees, format="json").json()
+        self.assertEqual(premiere["id"], deuxieme["id"])        # même envoi, nouvelle adresse
+        self.assertEqual(Video.objects.count(), 1)
+        Video.objects.filter(id=premiere["id"]).update(etat="en_attente")
+        self.assertEqual(client.post(reverse("api_preparer_envoi"), donnees, format="json").status_code, 409)
+
+
+class PagesCompteTests(TestCase):
+    """C1 préférences, C5 Mes vidéos, C4 quota par utilisateur."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username="samba", password="motdepasse123")
+        self.client.force_login(self.user)
+
+    def test_preferences_enregistrees_et_donnees_a_claude(self):
+        from .models import PreferencesPublication
+        self.client.post(reverse("mes_preferences"), {"pour_enfants": "non", "contenu_ia": "oui", "visibilite": "unlisted"})
+        prefs = PreferencesPublication.objects.get(user=self.user)
+        self.assertEqual((prefs.pour_enfants, prefs.contenu_ia, prefs.visibilite), (False, True, "unlisted"))
+        api = APIClient()
+        api.credentials(HTTP_AUTHORIZATION="Token " + CleApi.creer_pour(self.user))
+        self.assertEqual(api.get(reverse("api_mon_compte")).json()["preferences_publication"]["visibilite"], "unlisted")
+
+    def test_preferences_me_demander(self):
+        from .models import PreferencesPublication
+        self.client.post(reverse("mes_preferences"), {"pour_enfants": "", "contenu_ia": "", "visibilite": ""})
+        prefs = PreferencesPublication.objects.get(user=self.user)
+        self.assertIsNone(prefs.pour_enfants)
+
+    def test_mes_videos_seulement_les_miennes(self):
+        autre = User.objects.create_user(username="autre", password="motdepasse123")
+        Video.objects.create(user=autre, titre="Pas à moi", pour_enfants=False, fichier="")
+        Video.objects.create(user=self.user, titre="À moi", pour_enfants=False, fichier="", etat="reussi", youtube_id="abc")
+        reponse = self.client.get(reverse("mes_videos_site"))
+        self.assertContains(reponse, "À moi")
+        self.assertContains(reponse, "https://youtu.be/abc")
+        self.assertNotContains(reponse, "Pas à moi")
+
+    def test_quota_propre_a_l_utilisateur(self):
+        from .voix import quota_restant
+        voix = VoixUtilisateur.objects.create(user=self.user, quota_secondes=3600)
+        self.assertEqual(quota_restant(voix), 3600)

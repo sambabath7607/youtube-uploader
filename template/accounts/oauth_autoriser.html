@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block titre %}Autoriser un agent IA{% endblock %}
+
+{% block contenu %}
+<article>
+    <h1>Autoriser « {{ client.nom|default:hote_retour }} » ?</h1>
+    <p>Cet agent IA demande l'accès à ton compte <strong>{{ user.username }}</strong> sur Batch Code IA.</p>
+    <p>S'il est autorisé, il pourra :</p>
+    <ul>
+        <li>envoyer des vidéos sur ta chaîne YouTube (en te posant d'abord les questions de YouTube) ;</li>
+        <li>lire des textes avec ta voix enregistrée (dans la limite de tes minutes du mois) ;</li>
+        <li>voir l'état de tes envois et le résumé de ton compte.</li>
+    </ul>
+    <p><small>Retour vers : <code>{{ hote_retour }}</code>. Tu peux retirer cet accès à tout moment sur la page
+        <a href="{% url 'ma_cle' %}">Mes clés</a>.</small></p>
+    <form method="post">
+        {% csrf_token %}
+        {% for nom, valeur in parametres %}<input type="hidden" name="{{ nom }}" value="{{ valeur }}">{% endfor %}
+        <button type="submit" name="decision" value="autoriser">✅ Autoriser</button>
+        <button type="submit" name="decision" value="refuser" class="secondary">Refuser</button>
+    </form>
+</article>
+{% endblock %}

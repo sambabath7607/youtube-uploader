@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block titre %}Mes vidéos{% endblock %}
+
+{% block contenu %}
+<h1>Mes vidéos</h1>
+<p>Tous tes envois vers YouTube, du plus récent au plus ancien.</p>
+
+{% if page %}
+<table>
+    <thead><tr><th>Titre</th><th>Date</th><th>État</th><th>Visibilité</th><th>YouTube</th></tr></thead>
+    <tbody>
+    {% for video in page %}
+        <tr>
+            <td>{{ video.titre }}</td>
+            <td>{{ video.created_at|date:"j M Y H:i" }}</td>
+            <td>{{ video.get_etat_display }}{% if video.erreur %}<br><small>{{ video.erreur }}</small>{% endif %}</td>
+            <td>{{ video.get_visibilite_display }}</td>
+            <td>
+                {% if video.youtube_id %}<a href="https://youtu.be/{{ video.youtube_id }}" target="_blank" rel="noopener">Voir</a>
+                {% elif video.etat == "reussi" %}<small>Lien effacé après 30 jours (règle de YouTube) : voir YouTube Studio</small>
+                {% else %}—{% endif %}
+            </td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% if page.has_other_pages %}
+<p>
+    {% if page.has_previous %}<a href="?page={{ page.previous_page_number }}">← Plus récentes</a>{% endif %}
+    Page {{ page.number }} sur {{ page.paginator.num_pages }}
+    {% if page.has_next %}<a href="?page={{ page.next_page_number }}">Plus anciennes →</a>{% endif %}
+</p>
+{% endif %}
+{% else %}
+<p>Aucune vidéo pour l'instant.</p>
+{% endif %}
+
+<p><a href="{% url 'nouvelle_video' %}">Envoyer une vidéo</a> · <a href="{% url 'accueil' %}">Retour à l'accueil</a></p>
+{% endblock %}

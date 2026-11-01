@@ -3,9 +3,18 @@
 
 <h1>Bienvenue, {{ user.username }} !</h1>
 
-<p>Vous êtes connecté.</p>
+{% if etapes_faites < nb_etapes %}
+<article>
+    <h2>Démarrer ({{ etapes_faites }} / {{ nb_etapes }})</h2>
+    <ul>
+    {% for libelle, fait, lien in etapes %}
+        <li>{% if fait %}✅ {{ libelle }}{% else %}⬜ <a href="{% if lien == '#chaine' %}#chaine{% else %}{% url lien %}{% endif %}">{{ libelle }}</a>{% endif %}</li>
+    {% endfor %}
+    </ul>
+</article>
+{% endif %}
 
-<h2>Ma chaîne YouTube</h2>
+<h2 id="chaine">Ma chaîne YouTube</h2>
 {% if user.youtubecredentials %}
     {% if user.youtubecredentials.chaine_titre %}
         <p>Chaîne YouTube connectée : <strong>{{ user.youtubecredentials.chaine_titre }}</strong></p>
@@ -25,7 +34,7 @@
 <p>L'agent IA écrit le script, le lit avec ta voix, fabrique la vidéo et la publie sur ta chaîne.</p>
 <p>
     <a role="button" href="{% url 'guide_claude' %}#creer-une-video">🎬 Créer une vidéo avec Claude Code</a>
-    <button type="button" class="secondary" disabled>Autres agents IA (bientôt)</button>
+    <a role="button" class="secondary" href="{% url 'guide_claude' %}#autres-agents">Autres agents IA</a>
 </p>
 <p><small>C'est Claude Code (onglet « Code » de l'application Claude, sur ordinateur) qui fabrique la vidéo.
     Première fois ? Ajoute d'abord le connecteur Batch Code IA : <a href="{% url 'guide_claude' %}">Utiliser avec Claude Code</a>.</small></p>
@@ -42,7 +51,9 @@
 <h2>Mes outils</h2>
 <ul>
     <li><a href="{% url 'nouvelle_video' %}">Envoyer une vidéo</a></li>
-    <li><a href="{% url 'ma_cle' %}">Ma clé d'API</a></li>
+    <li><a href="{% url 'mes_videos_site' %}">Mes vidéos</a></li>
+    <li><a href="{% url 'mes_preferences' %}">Mes préférences de publication</a></li>
+    <li><a href="{% url 'ma_cle' %}">Mes clés d'API</a></li>
     <li><a href="{% url 'guide_claude' %}">🤖 Utiliser avec Claude Code</a></li>
     <li><a href="{% url 'guide_api' %}">Guide de l'API</a></li>
 </ul>

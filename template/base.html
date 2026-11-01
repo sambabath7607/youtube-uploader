@@ -19,11 +19,12 @@
             <ul>
                 {% if user.is_authenticated %}
                     <li><a href="{% url 'accueil' %}">Accueil</a></li>
-                    <li><a href="{% url 'nouvelle_video' %}">Envoyer</a></li>
-                    <li><a href="{% url 'ma_cle' %}">Ma clé</a></li>
-                    <li><a href="{% url 'guide_api' %}">Guide</a></li>
+                    <li><a href="{% url 'mes_videos_site' %}">Mes vidéos</a></li>
+                    <li><a href="{% url 'ma_voix' %}">Ma voix</a></li>
+                    <li><a href="{% url 'ma_cle' %}">Mes clés</a></li>
+                    <li><a href="{% url 'guide_claude' %}">Guide</a></li>
                 {% else %}
-                    <li><a href="{% url 'guide_api' %}">Guide</a></li>
+                    <li><a href="{% url 'guide_claude' %}">Guide</a></li>
                     <li><a href="{% url 'login' %}">Connexion</a></li>
                     <li><a href="{% url 'inscription' %}" role="button">S'inscrire</a></li>
                 {% endif %}

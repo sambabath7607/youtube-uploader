@@ -93,7 +93,9 @@ def deconnecter_youtube(request):
     ligne = YouTubeCredentials.objects.filter(user=request.user).first()
     if ligne:
         revoque = revoquer_token_google(ligne)
-        ligne.delete()
+        # Règle YouTube : à la révocation, on efface le jeton ET les identifiants des vidéos envoyées
+        from .envois import effacer_donnees_youtube
+        effacer_donnees_youtube(request.user)
         if revoque:
             messages.success(request, "Ta chaîne YouTube est déconnectée et l'accès a été retiré chez Google.")
         else:

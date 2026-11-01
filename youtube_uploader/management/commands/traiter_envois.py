@@ -4,7 +4,9 @@ import time
 from django.core.management.base import BaseCommand
 from django.db import close_old_connections
 
-from youtube_uploader.envois import envoyer, marquer_envois_interrompus, prendre_prochaine_video
+from youtube_uploader.envois import envoyer, marquer_envois_interrompus, prendre_prochaine_video, taches_periodiques
+
+INTERVALLE_TACHES = 3600   # nettoyage, règle des 30 jours et sauvegarde : vérifiés toutes les heures
 
 
 class Command(BaseCommand):
@@ -18,8 +20,12 @@ class Command(BaseCommand):
         # systemctl stop / restart : on termine la vidéo en cours avant de s'arrêter
         signal.signal(signal.SIGTERM, lambda *_: setattr(self, "arreter", True))
         marquer_envois_interrompus()
+        derniere_verification = 0.0
         while not self.arreter:
             close_old_connections()
+            if not options["une_fois"] and time.monotonic() - derniere_verification > INTERVALLE_TACHES:
+                taches_periodiques()
+                derniere_verification = time.monotonic()
             video = prendre_prochaine_video()
             if video:
                 envoyer(video)

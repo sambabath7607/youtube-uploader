@@ -29,6 +29,7 @@ from urllib3.connectionpool import HTTPConnectionPool, HTTPSConnectionPool
 load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
 
 ADRESSE_API = os.environ.get("MCP_ADRESSE_API", "https://api.batchcodeia.com/youtube/api/v1/videos/")
+ADRESSE_PUBLIQUE = os.environ.get("MCP_ADRESSE_PUBLIQUE", "https://api.batchcodeia.com")   # pour le 401 OAuth
 ADRESSE_VOIX = ADRESSE_API.replace("/videos/", "/voix/")
 ADRESSE_ENVOIS = ADRESSE_API.replace("/videos/", "/envois/")
 ADRESSE_COMPTE = ADRESSE_API.replace("/videos/", "/compte/")
@@ -278,20 +279,22 @@ class VerifierCle:
             return await self.app(scope, receive, send)
         entetes = dict(scope.get("headers") or [])
         valeur = entetes.get(b"authorization", b"").decode().strip()
-        if valeur.lower().startswith("bearer "):
-            valeur = "Token " + valeur[7:].strip()
+        # « Bearer … » = jeton de la connexion en un clic (OAuth) : transmis tel quel, l'API le vérifie
         # claude.ai (« Request headers ») ne permet pas Authorization : la clé peut arriver dans X-API-Key
         if not valeur:
             cle_x = entetes.get(b"x-api-key", b"").decode().strip()
             if cle_x:
                 valeur = cle_x if cle_x.lower().startswith("token ") else "Token " + cle_x
-        if not valeur.lower().startswith("token ") or len(valeur) < 10:
+        if not valeur.lower().startswith(("token ", "bearer ")) or len(valeur) < 10:
             corps = json.dumps({
-                "erreur": "Clé d'API manquante. Ajoute l'en-tête « Authorization: Token TA_CLE » ou « X-API-Key: TA_CLE » (page « Ma clé d'API » du site).",
+                "erreur": "Connexion requise : connecte-toi en un clic (OAuth) ou ajoute ta clé dans l'en-tête "
+                          "« X-API-Key: TA_CLE » (page « Mes clés » du site).",
                 "code": "non_authentifie",
             }).encode()
+            # Spécification MCP : le 401 indique où trouver le serveur de connexion (RFC 9728)
+            defi = f'Bearer resource_metadata="{ADRESSE_PUBLIQUE}/.well-known/oauth-protected-resource/mcp", scope="videos"'
             await send({"type": "http.response.start", "status": 401,
-                        "headers": [(b"content-type", b"application/json")]})
+                        "headers": [(b"content-type", b"application/json"), (b"www-authenticate", defi.encode())]})
             await send({"type": "http.response.body", "body": corps})
             return
         jeton = cle_courante.set(valeur)
@@ -339,7 +342,9 @@ async def preparer_envoi(titre: str, pour_enfants: bool, contenu_ia: bool, descr
                          visibilite: str = "private") -> dict:
     """Prépare l'envoi sur YouTube d'une vidéo qui se trouve sur l'ordinateur (par exemple fabriquée avec Remotion).
 
-    Avant d'appeler cet outil, demande TOUJOURS à l'utilisateur :
+    Réponses obligatoires de YouTube : regarde d'abord mon_compte() → preferences_publication. Pour chaque
+    réponse enregistrée, utilise-la sans redemander et rappelle-la dans ton récapitulatif ; pour chaque valeur null,
+    demande à l'utilisateur :
     1. si la vidéo est conçue pour les enfants (pour_enfants) ;
     2. si elle contient des scènes réalistes générées ou modifiées par IA (contenu_ia). Une voix clonée
        (fabriquer_voix) compte comme contenu IA : contenu_ia = true.
@@ -363,7 +368,8 @@ async def preparer_envoi(titre: str, pour_enfants: bool, contenu_ia: bool, descr
 @mcp.tool()
 async def mon_compte() -> dict:
     """Résumé du compte de l'utilisateur : chaîne YouTube connectée (et son nom), voix enregistrée,
-    minutes de voix restantes ce mois-ci, tests de voix et envois restants aujourd'hui.
+    minutes de voix restantes ce mois-ci, tests de voix et envois restants aujourd'hui,
+    et ses préférences de publication (réponses par défaut aux questions de YouTube : null = lui demander).
     Utilise-le avant de créer une vidéo, et quand l'utilisateur demande ce qu'il lui reste.
     Indique-lui toujours le nom de la chaîne sur laquelle la vidéo va partir (s'il est connu)."""
     cle, probleme = cle_ou_erreur()

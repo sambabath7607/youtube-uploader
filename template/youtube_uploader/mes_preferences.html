@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block titre %}Mes préférences de publication{% endblock %}
+
+{% block contenu %}
+<h1>Mes préférences de publication</h1>
+<p>YouTube demande ces réponses pour chaque vidéo. Si tu les enregistres ici, Claude Code les utilisera sans te
+reposer les questions (il te les rappellera dans son récapitulatif). Choisis « Me demander » pour garder la question.</p>
+
+<form method="post">
+    {% csrf_token %}
+    <fieldset>
+        <legend>Mes vidéos sont-elles conçues pour les enfants ?</legend>
+        <label><input type="radio" name="pour_enfants" value="" {% if prefs.pour_enfants is None %}checked{% endif %}> Me demander à chaque fois</label>
+        <label><input type="radio" name="pour_enfants" value="non" {% if prefs.pour_enfants is False %}checked{% endif %}> Non</label>
+        <label><input type="radio" name="pour_enfants" value="oui" {% if prefs.pour_enfants %}checked{% endif %}> Oui</label>
+    </fieldset>
+    <fieldset>
+        <legend>Contiennent-elles des scènes réalistes générées par IA ? (ta voix clonée compte comme contenu IA)</legend>
+        <label><input type="radio" name="contenu_ia" value="" {% if prefs.contenu_ia is None %}checked{% endif %}> Me demander à chaque fois</label>
+        <label><input type="radio" name="contenu_ia" value="oui" {% if prefs.contenu_ia %}checked{% endif %}> Oui</label>
+        <label><input type="radio" name="contenu_ia" value="non" {% if prefs.contenu_ia is False %}checked{% endif %}> Non</label>
+    </fieldset>
+    <fieldset>
+        <legend>Visibilité sur YouTube</legend>
+        <label><input type="radio" name="visibilite" value="" {% if not prefs.visibilite %}checked{% endif %}> Me demander à chaque fois</label>
+        {% for valeur, libelle in visibilites %}
+            <label><input type="radio" name="visibilite" value="{{ valeur }}" {% if prefs.visibilite == valeur %}checked{% endif %}> {{ libelle }}</label>
+        {% endfor %}
+    </fieldset>
+    <button type="submit">Enregistrer</button>
+</form>
+
+<p><a href="{% url 'accueil' %}">Retour à l'accueil</a></p>
+{% endblock %}

@@ -112,3 +112,30 @@ class OrdreDuFichierTests(SimpleTestCase):
         outils = [i for i, l in enumerate(lignes) if l.startswith("@mcp.tool()")]
         self.assertEqual(len(outils), 7)
         self.assertGreater(demarrage, max(outils))
+
+
+
+@unittest.skipUnless(MCP_INSTALLE, "paquet mcp absent (installé seulement sur le serveur)")
+class ConnexionEnUnClicMcpTests(SimpleTestCase):
+    def appeler(self, entetes):
+        envoye, recu = [], {}
+
+        async def application(scope, receive, send):
+            recu["cle"] = mcp_server.cle_courante.get()
+
+        async def envoyer(message):
+            envoye.append(message)
+
+        scope = {"type": "http", "headers": [(n.encode(), v.encode()) for n, v in entetes]}
+        asyncio.run(mcp_server.VerifierCle(application)(scope, None, envoyer))
+        return envoye, recu.get("cle")
+
+    def test_jeton_bearer_transmis_tel_quel(self):
+        _, cle = self.appeler([("authorization", "Bearer " + "j" * 40)])
+        self.assertEqual(cle, "Bearer " + "j" * 40)
+
+    def test_401_indique_le_serveur_de_connexion(self):
+        envoye, _ = self.appeler([])
+        entetes = dict(envoye[0]["headers"])
+        self.assertEqual(envoye[0]["status"], 401)
+        self.assertIn(b"resource_metadata=", entetes[b"www-authenticate"])

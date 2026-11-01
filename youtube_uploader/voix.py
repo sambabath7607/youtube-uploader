@@ -8,7 +8,6 @@ import math
 from django.core import signing
 from django.utils import timezone
 
-from .models import QUOTA_GRATUIT_SECONDES
 
 APP_MODAL = "batchcodeia-voix"
 MOTS_PAR_SECONDE = 2.5          # débit moyen d'une voix qui explique un cours (environ 150 mots par minute)
@@ -26,7 +25,7 @@ def quota_restant(voix):
     if voix.mois_du_compteur != debut_mois:
         voix.mois_du_compteur, voix.secondes_utilisees = debut_mois, 0
         voix.save(update_fields=["mois_du_compteur", "secondes_utilisees"])
-    return max(0, QUOTA_GRATUIT_SECONDES - voix.secondes_utilisees)
+    return max(0, voix.quota_secondes - voix.secondes_utilisees)   # quota propre à chaque utilisateur (offre Pro)
 
 
 def jeton_travail(id_appel, user):

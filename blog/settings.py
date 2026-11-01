@@ -41,8 +41,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
-    #mes app
-
+    # mes applications
     'accounts',
     'youtube_uploader',
     "rest_framework",
@@ -136,8 +135,19 @@ STATIC_ROOT = BASE_DIR / "staticfiles"  # dossier où collectstatic copie le CSS
 # Email
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
 
-# Courriels : affichés dans le terminal (le site n'en envoie pas encore ; à remplacer par un vrai serveur SMTP le jour venu)
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+# Courriels (« ta vidéo est en ligne », « reconnecte ta chaîne ») : SMTP si EMAIL_HOST est dans .env (ex. Brevo),
+# sinon affichés dans le terminal
+if os.environ.get("EMAIL_HOST"):
+    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+    EMAIL_HOST = os.environ["EMAIL_HOST"]
+    EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
+    EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
+    EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
+    EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "True") == "True"
+    EMAIL_TIMEOUT = 15
+else:
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "Batch Code IA <noreply@batchcodeia.com>")
 LOGIN_REDIRECT_URL = "accueil"
 LOGIN_URL = 'login'
 LOGOUT_REDIRECT_URL = "login"

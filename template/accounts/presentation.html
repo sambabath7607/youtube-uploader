@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block titre %}Batch Code IA – Publie tes vidéos YouTube avec Claude Code et ta voix{% endblock %}
+
+{% block contenu %}
+<h1>Crée et publie tes vidéos YouTube avec Claude Code… et ta propre voix</h1>
+<p><strong>Batch Code IA</strong> relie ta chaîne YouTube à Claude Code. Tu décris la vidéo que tu veux :
+Claude Code écrit le script, le lit avec ta voix, fabrique la vidéo animée et la publie sur ta chaîne.</p>
+
+<p>
+    <a role="button" href="{% url 'inscription' %}">Créer un compte gratuit</a>
+    <a role="button" class="secondary" href="{% url 'login' %}">Se connecter</a>
+</p>
+
+<h2>Comment ça marche</h2>
+<ol>
+    <li><strong>Connecte ta chaîne YouTube</strong> (connexion sécurisée Google). Le site ne demande que le droit
+        d'envoyer des vidéos sur ta chaîne.</li>
+    <li><strong>Enregistre ta voix une fois</strong> (1 minute, avec ton consentement). Elle sert uniquement à tes vidéos.</li>
+    <li><strong>Demande à Claude Code</strong> : « Crée une vidéo de 5 minutes sur les boucles en Python avec ma voix ».
+        Il te montre le plan, puis publie la vidéo et te donne le lien.</li>
+</ol>
+
+<h2>Ce que fait le service</h2>
+<ul>
+    <li>Envoi de vidéos sur <strong>ta</strong> chaîne YouTube, avec le titre, la description et la visibilité que tu choisis.</li>
+    <li>Lecture de tes scripts avec ta voix clonée (10 minutes offertes par mois).</li>
+    <li>Suivi de tes envois et historique sur la page « Mes vidéos ».</li>
+    <li>Tu peux déconnecter ta chaîne, supprimer ta voix, télécharger ou supprimer toutes tes données à tout moment.</li>
+</ul>
+
+<h2>Tes données</h2>
+<p>Nous utilisons les services d'API YouTube uniquement pour publier les vidéos que tu demandes. Nous ne vendons
+pas tes données et nous ne les utilisons pas pour la publicité. Détails : <a href="{% url 'confidentialite' %}">politique
+de confidentialité</a> et <a href="{% url 'conditions' %}">conditions d'utilisation</a>. Tu peux retirer l'accès du site
+à tout moment sur <a href="https://myaccount.google.com/permissions">la page des autorisations de ton compte Google</a>.</p>
+
+<p><a href="{% url 'guide_claude' %}">Guide : utiliser la plateforme avec Claude Code</a> ·
+   <a href="{% url 'guide_api' %}">Guide de l'API</a></p>
+{% endblock %}

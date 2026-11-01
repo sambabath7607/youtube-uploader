@@ -1,31 +1,83 @@
 {% extends "base.html" %}
-{% block titre %}Ma clé d'API{% endblock %}
+{% block titre %}Mes clés d'API{% endblock %}
 
 {% block contenu %}
-<h1>Ma clé d'API</h1>
+<h1>Mes clés d'API</h1>
 
-<p>Cette clé permet à Claude Code d'envoyer des vidéos sur ta chaîne. Ne la partage avec personne.</p>
+<p>Une clé permet à un agent IA (Claude Code, claude.ai, Cursor…) d'utiliser ton compte. Crée <strong>une clé par
+appareil ou par agent</strong> : en créer une nouvelle n'annule pas les autres. Ne la partage avec personne.</p>
 
 {% if nouvelle_cle %}
-<p><strong>Copie-la maintenant : elle ne sera plus jamais affichée.</strong></p>
-<label for="cle">Ta nouvelle clé :</label>
-<input type="text" id="cle" value="{{ nouvelle_cle }}" readonly size="45">
-<button type="button" id="copier">Copier</button>
-<span id="copie-ok" hidden>Clé copiée.</span>
+<article>
+    <p><strong>Clé « {{ nom_nouvelle_cle }} » — copie-la maintenant : elle ne sera plus jamais affichée.</strong></p>
+    <input type="text" id="cle" value="{{ nouvelle_cle }}" readonly size="45">
+    <button type="button" id="copier">Copier</button>
+    <span id="copie-ok" hidden>Clé copiée.</span>
+    <p>Où la coller : dans claude.ai, en-tête <code>x-api-key</code> du connecteur (voir
+        <a href="{% url 'guide_claude' %}">Utiliser avec Claude Code</a>).</p>
+</article>
+{% endif %}
 
-<p>Mets-la à jour sur ton ordinateur :</p>
-<pre>setx YOUTUBE_API_KEY "NOUVELLE_CLE"</pre>
-{% elif cle %}
-<p>Ta clé actuelle commence par <code>{{ cle.debut }}…</code> (créée le {{ cle.created_at|date:"j F Y" }}).
-Elle n'est plus affichée en entier : si tu l'as perdue, crée une nouvelle clé.</p>
+<h2>Créer une clé</h2>
+<form method="post" action="{% url 'ma_cle' %}">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="creer">
+    <label>Nom de la clé (pour la reconnaître)
+        <input type="text" name="nom" maxlength="50" placeholder="ex. claude.ai, PC du bureau, Cursor">
+    </label>
+    <button type="submit">Créer une clé</button>
+</form>
+
+<h2>Mes clés</h2>
+{% if cles %}
+<table>
+    <thead><tr><th>Nom</th><th>Début</th><th>Créée le</th><th>Dernier usage</th><th></th></tr></thead>
+    <tbody>
+    {% for cle in cles %}
+        <tr>
+            <td>{{ cle.nom }}</td>
+            <td><code>{{ cle.debut }}…</code></td>
+            <td>{{ cle.created_at|date:"j F Y" }}</td>
+            <td>{% if cle.dernier_usage %}{{ cle.dernier_usage|date:"j F Y" }}{% else %}jamais{% endif %}</td>
+            <td>
+                <form method="post" action="{% url 'ma_cle' %}" class="form-supprimer-cle">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="supprimer">
+                    <input type="hidden" name="id" value="{{ cle.id }}">
+                    <button type="submit" class="secondary">Supprimer</button>
+                </form>
+            </td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
 {% else %}
 <p>Tu n'as pas encore de clé.</p>
 {% endif %}
 
-<form method="post" action="{% url 'ma_cle' %}" id="form-regenerer">
-    {% csrf_token %}
-    <button type="submit">Créer une nouvelle clé</button>
-</form>
+<h2>Agents IA connectés en un clic</h2>
+{% if agents %}
+<table>
+    <thead><tr><th>Agent</th><th>Dernière connexion</th><th></th></tr></thead>
+    <tbody>
+    {% for agent in agents %}
+        <tr>
+            <td>{{ agent.client__nom|default:agent.client__client_id }}</td>
+            <td>{{ agent.depuis|date:"j F Y H:i" }}</td>
+            <td>
+                <form method="post" action="{% url 'oauth_retirer' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="client" value="{{ agent.client_id }}">
+                    <button type="submit" class="secondary">Retirer l'accès</button>
+                </form>
+            </td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>Aucun agent connecté en un clic.</p>
+{% endif %}
 
 <p><a href="{% url 'accueil' %}">Retour à l'accueil</a></p>
 
@@ -38,10 +90,12 @@ Elle n'est plus affichée en entier : si tu l'as perdue, crée une nouvelle clé
             });
         });
     }
-    document.getElementById("form-regenerer").addEventListener("submit", function (e) {
-        if ({% if cle %}!confirm("L'ancienne clé ne marchera plus. Continuer ?"){% else %}false{% endif %}) {
-            e.preventDefault();
-        }
+    document.querySelectorAll(".form-supprimer-cle").forEach(function (formulaire) {
+        formulaire.addEventListener("submit", function (e) {
+            if (!confirm("Supprimer cette clé ? L'appareil ou l'agent qui l'utilise ne pourra plus accéder à ton compte.")) {
+                e.preventDefault();
+            }
+        });
     });
 </script>
 {% endblock %}

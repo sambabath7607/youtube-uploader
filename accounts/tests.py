@@ -33,12 +33,24 @@ class MaCleTests(TestCase):
         self.assertContains(reponse, cle)
         self.assertNotContains(self.client.get(reverse("ma_cle")), cle)
 
-    def test_nouvelle_cle_remplace_l_ancienne(self):
+    def test_plusieurs_cles_et_suppression(self):
+        # B2 : une clé par appareil ; en créer une n'annule pas les autres, on supprime clé par clé
         self.client.login(username="test", password="motdepasse123")
-        ancienne = CleApi.creer_pour(self.user)
-        self.client.post(reverse("ma_cle"))
-        self.assertEqual(CleApi.objects.filter(user=self.user).count(), 1)
-        self.assertFalse(CleApi.objects.filter(empreinte=empreinte(ancienne)).exists())
+        ancienne = CleApi.creer_pour(self.user, "PC")
+        self.client.post(reverse("ma_cle"), {"action": "creer", "nom": "claude.ai"})
+        self.assertEqual(CleApi.objects.filter(user=self.user).count(), 2)
+        self.assertTrue(CleApi.objects.filter(empreinte=empreinte(ancienne)).exists())
+        self.assertTrue(CleApi.objects.filter(user=self.user, nom="claude.ai").exists())
+        cle_pc = CleApi.objects.get(user=self.user, nom="PC")
+        self.client.post(reverse("ma_cle"), {"action": "supprimer", "id": cle_pc.id})
+        self.assertFalse(CleApi.objects.filter(id=cle_pc.id).exists())
+
+    def test_on_ne_supprime_pas_la_cle_d_un_autre(self):
+        autre = User.objects.create_user(username="autre", password="motdepasse123")
+        cle_autre = CleApi.creer_pour(autre)
+        self.client.login(username="test", password="motdepasse123")
+        self.client.post(reverse("ma_cle"), {"action": "supprimer", "id": CleApi.objects.get(user=autre).id})
+        self.assertTrue(CleApi.objects.filter(empreinte=empreinte(cle_autre)).exists())
 
     def test_la_base_ne_contient_jamais_la_cle(self):
         cle = CleApi.creer_pour(self.user)
@@ -151,4 +163,119 @@ class BoutonClaudeTests(TestCase):
         self.assertContains(reponse, "Créer une vidéo avec Claude Code")
         self.assertContains(reponse, reverse("guide_claude") + "#creer-une-video")
         self.assertNotContains(reponse, "claude.ai/new")
-        self.assertContains(reponse, "Autres agents IA (bientôt)")
+        self.assertContains(reponse, reverse("guide_claude") + "#autres-agents")
+
+
+class ConnexionEnUnClicTests(TestCase):
+    """B1 : parcours OAuth complet d'un agent IA (enregistrement → Autoriser → jeton → API → rafraîchissement)."""
+
+    RETOUR = "https://claude.ai/api/mcp/auth_callback"
+
+    def setUp(self):
+        import base64, hashlib
+        self.user = User.objects.create_user(username="samba", password="motdepasse123")
+        self.verificateur = "v" * 50
+        self.defi = base64.urlsafe_b64encode(hashlib.sha256(self.verificateur.encode()).digest()).rstrip(b"=").decode()
+
+    def enregistrer(self, uris=None):
+        return self.client.post("/oauth/register/", json.dumps({"client_name": "Claude", "redirect_uris": uris or [self.RETOUR]}),
+                                content_type="application/json")
+
+    def autoriser(self, client_id, decision="autoriser", **autres):
+        params = {"response_type": "code", "client_id": client_id, "redirect_uri": self.RETOUR, "state": "etat123",
+                  "code_challenge": self.defi, "code_challenge_method": "S256", "resource": "http://testserver/mcp",
+                  "decision": decision}
+        params.update(autres)
+        return self.client.post("/oauth/authorize/", params)
+
+    def code_depuis(self, reponse):
+        from urllib.parse import parse_qs, urlparse
+        return parse_qs(urlparse(reponse["Location"]).query)
+
+    def test_metadonnees(self):
+        serveur = self.client.get("/.well-known/oauth-authorization-server").json()
+        self.assertEqual(serveur["code_challenge_methods_supported"], ["S256"])
+        ressource = self.client.get("/.well-known/oauth-protected-resource/mcp").json()
+        self.assertEqual(ressource["resource"], "http://testserver/mcp")
+
+    def test_parcours_complet(self):
+        from rest_framework.test import APIClient
+        client_id = self.enregistrer().json()["client_id"]
+        self.client.force_login(self.user)
+        self.assertContains(self.client.get("/oauth/authorize/", {
+            "response_type": "code", "client_id": client_id, "redirect_uri": self.RETOUR,
+            "code_challenge": self.defi, "code_challenge_method": "S256"}), "Autoriser « Claude »")
+        retour = self.code_depuis(self.autoriser(client_id))
+        self.assertEqual(retour["state"], ["etat123"])
+        self.assertEqual(retour["iss"], ["http://testserver"])
+        jetons = self.client.post("/oauth/token/", {"grant_type": "authorization_code", "code": retour["code"][0],
+                                                    "redirect_uri": self.RETOUR, "client_id": client_id,
+                                                    "code_verifier": self.verificateur}).json()
+        self.assertEqual(jetons["token_type"], "Bearer")
+        api = APIClient()
+        api.credentials(HTTP_AUTHORIZATION="Bearer " + jetons["access_token"])
+        self.assertEqual(api.get(reverse("api_mon_compte")).status_code, 200)
+        # le code ne sert qu'une fois
+        deuxieme = self.client.post("/oauth/token/", {"grant_type": "authorization_code", "code": retour["code"][0],
+                                                      "redirect_uri": self.RETOUR, "client_id": client_id,
+                                                      "code_verifier": self.verificateur})
+        self.assertEqual(deuxieme.json()["error"], "invalid_grant")
+        # rafraîchissement avec rotation
+        nouveaux = self.client.post("/oauth/token/", {"grant_type": "refresh_token", "client_id": client_id,
+                                                      "refresh_token": jetons["refresh_token"]}).json()
+        self.assertIn("access_token", nouveaux)
+        rejoue = self.client.post("/oauth/token/", {"grant_type": "refresh_token", "client_id": client_id,
+                                                    "refresh_token": jetons["refresh_token"]})
+        self.assertEqual(rejoue.json()["error"], "invalid_grant")
+
+    def test_pkce_incorrect_refuse(self):
+        client_id = self.enregistrer().json()["client_id"]
+        self.client.force_login(self.user)
+        code = self.code_depuis(self.autoriser(client_id))["code"][0]
+        reponse = self.client.post("/oauth/token/", {"grant_type": "authorization_code", "code": code, "redirect_uri": self.RETOUR,
+                                                     "client_id": client_id, "code_verifier": "mauvais" * 8})
+        self.assertEqual(reponse.json()["error"], "invalid_grant")
+
+    def test_refus_renvoie_access_denied(self):
+        client_id = self.enregistrer().json()["client_id"]
+        self.client.force_login(self.user)
+        self.assertEqual(self.code_depuis(self.autoriser(client_id, decision="refuser"))["error"], ["access_denied"])
+
+    def test_adresse_de_retour_inconnue_jamais_suivie(self):
+        client_id = self.enregistrer().json()["client_id"]
+        self.client.force_login(self.user)
+        reponse = self.autoriser(client_id, redirect_uri="https://pirate.example/vol")
+        self.assertEqual(reponse.status_code, 400)
+
+    def test_enregistrement_refuse_http_hors_localhost(self):
+        self.assertEqual(self.enregistrer(["http://pirate.example/cb"]).status_code, 400)
+        self.assertEqual(self.enregistrer(["http://127.0.0.1:33418/callback"]).status_code, 201)
+
+    def test_retirer_l_acces(self):
+        from rest_framework.test import APIClient
+        client_id = self.enregistrer().json()["client_id"]
+        self.client.force_login(self.user)
+        code = self.code_depuis(self.autoriser(client_id))["code"][0]
+        jeton = self.client.post("/oauth/token/", {"grant_type": "authorization_code", "code": code, "redirect_uri": self.RETOUR,
+                                                   "client_id": client_id, "code_verifier": self.verificateur}).json()["access_token"]
+        from .models import ClientOAuth
+        self.client.post(reverse("oauth_retirer"), {"client": ClientOAuth.objects.get(client_id=client_id).id})
+        api = APIClient()
+        api.credentials(HTTP_AUTHORIZATION="Bearer " + jeton)
+        self.assertEqual(api.get(reverse("api_mon_compte")).status_code, 401)
+
+
+class AccueilTests(TestCase):
+    def test_visiteur_voit_la_presentation_publique(self):
+        reponse = self.client.get(reverse("accueil"))
+        self.assertEqual(reponse.status_code, 200)
+        self.assertContains(reponse, "Comment ça marche")
+        self.assertContains(reponse, reverse("confidentialite"))
+
+    def test_etapes_demarrer(self):
+        User.objects.create_user(username="samba", password="motdepasse123")
+        self.client.login(username="samba", password="motdepasse123")
+        reponse = self.client.get(reverse("accueil"))
+        self.assertContains(reponse, "Démarrer (0 / 5)")
+        YouTubeCredentials.objects.create(user=User.objects.get(username="samba"), token_json="{}")
+        self.assertContains(self.client.get(reverse("accueil")), "Démarrer (1 / 5)")

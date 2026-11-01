@@ -510,45 +510,45 @@ Tenue à jour : cocher ici quand une ligne est faite.
 |---|---|---|---|
 | A1 | Laisser l'utilisateur choisir la visibilité (publique / non répertoriée / privée) ; le code force « private » | Claude | ✅ (PC) |
 | A2 | Afficher le nom de la chaîne YouTube connectée (site + outil `ma_chaine` pour Claude) | Claude | ✅ (PC) après le 1er envoi ; avant : demanderait le droit youtube.readonly |
-| A3 | Règle des 30 jours sur les données venant de l'API YouTube (youtube_id…) : analyser et appliquer | Claude | ❌ |
-| A4 | Vérifier la suppression des données sous 7 jours après une révocation | Claude | ❌ à vérifier |
-| A5 | Page d'accueil publique de api.batchcodeia.com (Google refuse une simple page de connexion) | Claude | ❌ |
-| A6 | Démarches Google : domaine dans Search Console, passage en Production, vidéo de démonstration, demande de vérification, audit du quota | Samba (guidé) | ❌ |
+| A3 | Règle des 30 jours sur les données venant de l'API YouTube (youtube_id…) : analyser et appliquer | Claude | ✅ |
+| A4 | Vérifier la suppression des données sous 7 jours après une révocation | Claude | ✅ |
+| A5 | Page d'accueil publique de api.batchcodeia.com (Google refuse une simple page de connexion) | Claude | ✅ |
+| A6 | Démarches Google : domaine dans Search Console, passage en Production, vidéo de démonstration, demande de vérification, audit du quota | Samba (guidé) | 📄 guide DEMARCHES_GOOGLE.md (Samba) |
 | A7 | Retirer l'ancien accès « token.json » sur myaccount.google.com/permissions | Samba | ❓ |
 
 ### B. Connexion des agents IA
 | N° | Fonctionnalité | État |
 |---|---|---|
-| B1 | Connexion en un clic (OAuth, spécification MCP 2026-07-28) : plus de clé à copier ; nécessaire pour plusieurs agents | ❌ |
-| B2 | Plusieurs clés d'API par compte (une par appareil / agent), pour qu'une nouvelle clé n'annule pas les autres | ❌ |
-| B3 | Autres agents IA : ChatGPT, Cursor, VS Code, Gemini… (documentation, réglages, tests) | ❌ |
+| B1 | Connexion en un clic (OAuth, spécification MCP 2026-07-28) : plus de clé à copier ; nécessaire pour plusieurs agents | ✅ |
+| B2 | Plusieurs clés d'API par compte (une par appareil / agent), pour qu'une nouvelle clé n'annule pas les autres | ✅ |
+| B3 | Autres agents IA : ChatGPT, Cursor, VS Code, Gemini… (documentation, réglages, tests) | ✅ documenté (seul Claude testé) |
 | B4 | Confirmer par un clic que le bouton « Envoyer une vidéo avec Claude » garde la demande déjà écrite | ✅ sans objet : bouton remplacé (voir ci-dessous) |
 
 ### C. Voix et vidéos
 | N° | Fonctionnalité | État |
 |---|---|---|
-| C1 | « Mes préférences de publication » : répondre une fois aux 2 questions YouTube (enfants, IA) | ❌ |
+| C1 | « Mes préférences de publication » : répondre une fois aux 2 questions YouTube (enfants, IA) | ✅ |
 | C2 | Outil `mon_quota` pour Claude (le guide propose « Combien de minutes me reste-t-il ? » mais aucun outil ne le dit) | ✅ (PC) outil `mon_compte` |
 | C3 | Mode « Sur mon PC » : le choix existe sur la page Ma voix, mais rien ne le fait fonctionner | ✅ retiré (il demandait d'installer 5 Go chez l'utilisateur) |
-| C4 | Offre Pro payante (Stripe) avec plus de minutes ; relever le quota du propriétaire pour les longues vidéos | ❌ |
-| C5 | Tableau de bord « Mes vidéos » sur le site (liste, état, lien YouTube) | ❌ |
-| C6 | Nettoyer les envois « en attente du fichier » jamais déposés (ils comptent dans la limite du jour) | ❌ |
-| C7 | Éviter les doublons si Claude renvoie deux fois la même vidéo | ❌ |
-| C8 | Courriels : « ta vidéo est en ligne », « reconnecte ta chaîne » (Brevo) | ❌ |
-| C9 | Page « Démarrer » avec coches (YouTube connecté, voix, Claude connecté, 1re vidéo) | ❌ |
+| C4 | Offre Pro payante (Stripe) avec plus de minutes ; relever le quota du propriétaire pour les longues vidéos | ✅ quota par utilisateur réglable dans l'admin ; paiement Stripe : demande tes clés Stripe |
+| C5 | Tableau de bord « Mes vidéos » sur le site (liste, état, lien YouTube) | ✅ |
+| C6 | Nettoyer les envois « en attente du fichier » jamais déposés (ils comptent dans la limite du jour) | ✅ |
+| C7 | Éviter les doublons si Claude renvoie deux fois la même vidéo | ✅ |
+| C8 | Courriels : « ta vidéo est en ligne », « reconnecte ta chaîne » (Brevo) | ✅ (SMTP à régler dans .env) |
+| C9 | Page « Démarrer » avec coches (YouTube connecté, voix, Claude connecté, 1re vidéo) | ✅ |
 | C10 | Plus tard : vidéos fabriquées par le serveur (téléphone), annuaire officiel des connecteurs Anthropic | ❌ plus tard |
 
 ### D. Serveur et sécurité
 | N° | Fonctionnalité | État |
 |---|---|---|
 | D1 | Mettre en ligne les Parties 23 + guide + bouton (pull, migrate, redémarrer youtube-uploader ET youtube-mcp) | ✅ 1er novembre 2026 : 7 outils en ligne |
-| D2 | Sauvegardes automatiques de la base (avec chmod 600) + copie de TOKEN_ENCRYPTION_KEY en lieu sûr | ❌ |
+| D2 | Sauvegardes automatiques de la base (avec chmod 600) + copie de TOKEN_ENCRYPTION_KEY en lieu sûr | ✅ |
 
 ### E. Ménage
 | N° | Fonctionnalité | État |
 |---|---|---|
-| E1 | Supprimer du PC l'atelier-voix d'essai, Python 3.11, ffmpeg, le cache du modèle (5 à 8 Go) | ❌ |
-| E2 | blog/settings.py : 32 lignes vides ajoutées par erreur (jamais envoyées sur GitHub) | ❌ |
+| E1 | Supprimer du PC l'atelier-voix d'essai, Python 3.11, ffmpeg, le cache du modèle (5 à 8 Go) | ⏳ commande à lancer par Samba (suppression bloquée pour Claude) |
+| E2 | blog/settings.py : 32 lignes vides ajoutées par erreur (jamais envoyées sur GitHub) | ✅ |
 
 ### Étape 2 de la liste : A1, A2, C2, C3 (31 octobre 2026, sur le PC)
 - A1 : `Video.visibilite` (private / unlisted / public, privée par défaut) ; formulaire du site (boutons radio),
@@ -579,3 +579,27 @@ Tenue à jour : cocher ici quand une ligne est faite.
   « Créer une vidéo avec Claude Code » (ouvrir l'application → onglet Code → nouvelle session → coller le prompt →
   demande). claude.ai sert seulement à ajouter le connecteur, lire un texte avec sa voix et suivre ses envois.
 - Guide de l'API et README mis à jour. 97 tests OK.
+
+## Bilan : toutes les tâches de la liste (1er novembre 2026, sur le PC)
+| Tâche | Ce qui a été fait |
+|---|---|
+| B2 plusieurs clés | `CleApi` devient ForeignKey (`cles_api`), `nom`, `dernier_usage` ; page « Mes clés » : créer avec un nom, liste, supprimer une clé ; 10 au maximum |
+| B1 connexion en un clic | accounts/oauth_serveur.py (sans nouveau paquet) : /.well-known/oauth-authorization-server et oauth-protected-resource(/mcp), /oauth/register/ (RFC 7591), client par document (CIMD), /oauth/authorize/ (page « Autoriser », PKCE S256 obligatoire, iss, state, adresse de retour exacte), /oauth/token/ (code à usage unique, jeton 1 h, rafraîchissement 30 jours avec rotation), « Retirer l'accès » sur Mes clés ; `JetonOAuthAuthentication` (Bearer) acceptée partout dans l'API ; le connecteur transmet le jeton et répond 401 avec `WWW-Authenticate: Bearer resource_metadata=…` |
+| A5 accueil public | « / » : page de présentation pour les visiteurs (fonctionnement, données, liens légaux) |
+| C9 Démarrer | 5 étapes cochées sur l'accueil (chaîne, voix, test de voix, clé/connecteur, 1re vidéo) |
+| C1 préférences | `PreferencesPublication` + page « Mes préférences de publication » ; données à Claude par `mon_compte` ; outils : ne pas redemander une réponse enregistrée |
+| C5 Mes vidéos | page « Mes vidéos » (état, visibilité, lien YouTube, pagination) ; menu du site mis à jour |
+| C4 quota | `VoixUtilisateur.quota_secondes` (600 par défaut) réglable dans l'administration |
+| C6 abandons | envois « attente_fichier » de plus d'1 h supprimés (worker, toutes les heures) |
+| C7 doublons | même titre en cours depuis moins d'1 h : même envoi (preparer_envoi) ou 409 `envoi_en_double` |
+| A3 30 jours | youtube_id (via `envoye_le`) et nom de chaîne (via `chaine_maj_le`) effacés après 30 jours sans rafraîchissement |
+| A4 révocation | déconnexion ou autorisation retirée chez Google (RefreshError) : jeton, chaîne et youtube_id effacés aussitôt |
+| C8 courriels | « ta vidéo est en ligne », « reconnecte ta chaîne » (si l'utilisateur a un courriel) ; SMTP si EMAIL_HOST dans .env |
+| D2 sauvegardes | copie quotidienne de la base dans ~/sauvegardes_youtube (dossier 700, fichiers 600, 14 gardées), par le worker |
+| E2 settings | 32 lignes vides retirées ; réglages des courriels |
+| Divers | admin (Video, chaîne sans jeton, voix avec quota, préférences, clés en lecture seule) ; export des données : voix et clés ; suppression du compte : fichier de voix effacé |
+| B3 / A6 | guide « Les autres agents IA » (réglages Cursor, VS Code, Gemini CLI, Windsurf, ChatGPT, Claude Code terminal) ; DEMARCHES_GOOGLE.md |
+- Migrations : accounts 0003 (clés), 0004 (OAuth) ; youtube_uploader 0008.
+- Tests : 119 OK (9 sautés sans le paquet mcp).
+- Restent hors code : démarches Google (Samba), paiement Stripe de l'offre Pro (clés Stripe nécessaires), essais réels
+  des autres agents, ménage du PC (commande donnée à Samba).

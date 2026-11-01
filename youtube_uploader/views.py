@@ -8,7 +8,7 @@ from django.utils import timezone
 
 from .envois import probleme_avant_envoi
 from .forms import VideoForm
-from .models import QUOTA_GRATUIT_SECONDES, Video, VoixUtilisateur
+from .models import PreferencesPublication, Video, VoixUtilisateur
 from .voix import essais_restants, etat_lecture, lancer_essai, quota_restant
 
 logger = logging.getLogger(__name__)
@@ -49,7 +49,7 @@ def ma_voix(request):
         action = request.POST.get("action")
         if action == "supprimer":
             voix.extrait.delete(save=False)
-            voix.consentement_le, voix.mode, voix.passage_debut = None, "aucune", 0
+            voix.consentement_le, voix.mode, voix.passage_debut, voix.voix_validee = None, "aucune", 0, False
             voix.save()
             request.session.pop("essai_voix", None)
             messages.success(request, "Ta voix a été supprimée.")
@@ -78,8 +78,8 @@ def ma_voix(request):
             if debut is None or debut not in request.session.get("essai_debuts", []):
                 messages.error(request, "Proposition introuvable : relance « Tester ma voix ».")
             else:
-                voix.passage_debut = debut
-                voix.save(update_fields=["passage_debut"])
+                voix.passage_debut, voix.voix_validee = debut, True
+                voix.save(update_fields=["passage_debut", "voix_validee"])
                 messages.success(request, "C'est noté ✅ : tes vidéos utiliseront ce passage de ta voix.")
         elif action == "mode":
             mode = request.POST.get("mode")
@@ -95,7 +95,7 @@ def ma_voix(request):
             else:
                 voix.extrait.delete(save=False)
                 voix.extrait.save(f"voix_{request.user.id}.webm", fichier, save=False)
-                voix.consentement_le, voix.passage_debut = timezone.now(), 0
+                voix.consentement_le, voix.passage_debut, voix.voix_validee = timezone.now(), 0, False
                 voix.save()
                 request.session.pop("essai_voix", None)
                 messages.success(request, "Ta voix est enregistrée.")
@@ -103,7 +103,7 @@ def ma_voix(request):
     restant = quota_restant(voix)
     return render(request, "youtube_uploader/ma_voix.html", {
         "voix": voix, "phrase": phrase,
-        "quota_minutes": restant // 60, "quota_secondes": restant % 60, "quota_total": QUOTA_GRATUIT_SECONDES // 60,
+        "quota_minutes": restant // 60, "quota_secondes": restant % 60, "quota_total": voix.quota_secondes // 60,
         "essais_restants": essais_restants(voix), "essai_en_cours": "essai_voix" in request.session,
     })
 
@@ -135,3 +135,27 @@ def ecouter_ma_voix(request):
     reponse = FileResponse(voix.extrait.open("rb"), content_type="audio/webm")
     reponse["Cache-Control"] = "no-store"   # ne pas garder de copie dans le navigateur
     return reponse
+
+
+@login_required
+def mes_videos(request):
+    """Tableau de bord : mes envois, leur état et le lien YouTube."""
+    from django.core.paginator import Paginator
+    page = Paginator(Video.objects.filter(user=request.user).order_by("-created_at"), 20).get_page(request.GET.get("page"))
+    return render(request, "youtube_uploader/mes_videos.html", {"page": page})
+
+
+@login_required
+def mes_preferences(request):
+    """Réponses par défaut aux questions de YouTube : Claude Code ne les repose plus à chaque vidéo."""
+    prefs, _ = PreferencesPublication.objects.get_or_create(user=request.user)
+    if request.method == "POST":
+        oui_non = {"oui": True, "non": False}
+        prefs.pour_enfants = oui_non.get(request.POST.get("pour_enfants"))
+        prefs.contenu_ia = oui_non.get(request.POST.get("contenu_ia"))
+        visibilite = request.POST.get("visibilite", "")
+        prefs.visibilite = visibilite if visibilite in dict(Video.VISIBILITES) else ""
+        prefs.save()
+        messages.success(request, "Tes préférences de publication sont enregistrées.")
+        return redirect("mes_preferences")
+    return render(request, "youtube_uploader/mes_preferences.html", {"prefs": prefs, "visibilites": Video.VISIBILITES})

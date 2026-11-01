@@ -15,6 +15,7 @@ class YouTubeCredentials(models.Model):
     # Nom de la chaîne : renvoyé par YouTube à chaque envoi (le droit youtube.upload ne permet pas de le lire avant)
     chaine_titre = models.CharField(max_length=200, blank=True)
     chaine_id = models.CharField(max_length=50, blank=True)
+    chaine_maj_le = models.DateTimeField(null=True, blank=True)   # règle YouTube : effacé si pas rafraîchi en 30 jours
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
@@ -40,11 +41,25 @@ class Video(models.Model):
     visibilite = models.CharField(max_length=10, choices=VISIBILITES, default="private")   # choisie par l'utilisateur
     etat = models.CharField(max_length=20, choices=ETATS, default="en_attente")
     youtube_id = models.CharField(max_length=50, blank=True)
+    envoye_le = models.DateTimeField(null=True, blank=True)        # règle YouTube : youtube_id effacé après 30 jours
     erreur = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.titre
+
+
+class PreferencesPublication(models.Model):
+    """Réponses par défaut aux questions de YouTube : Claude ne les repose plus à chaque vidéo.
+    Une valeur vide (None ou "") veut dire « me demander à chaque fois »."""
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="preferences")
+    pour_enfants = models.BooleanField(null=True, blank=True)
+    contenu_ia = models.BooleanField(null=True, blank=True)
+    visibilite = models.CharField(max_length=10, choices=Video.VISIBILITES, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Préférences de {self.user}"
 
 class VoixUtilisateur(models.Model):
     MODES = [
@@ -61,6 +76,8 @@ class VoixUtilisateur(models.Model):
     passage_debut = models.FloatField(default=0)                    # début (en s) des 10 s que le modèle écoute
     essais_du_jour = models.PositiveSmallIntegerField(default=0)    # « Tester ma voix » utilisés aujourd'hui
     jour_des_essais = models.DateField(null=True, blank=True)
+    voix_validee = models.BooleanField(default=False)               # « ✅ C'est ma voix » cliqué après un test
+    quota_secondes = models.PositiveIntegerField(default=QUOTA_GRATUIT_SECONDES)   # modifiable par l'administrateur (offre Pro)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
