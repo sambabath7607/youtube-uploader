@@ -97,6 +97,24 @@ Façon de travailler :
 connecteurs MCP distants. Adresse : <code>https://api.batchcodeia.com/mcp</code>. Connexion : en un clic (OAuth),
 ou avec une clé de la page <a href="{% url 'ma_cle' %}">Mes clés</a> (une clé par agent).
 <strong>Seul Claude a été testé</strong> : les réglages ci-dessous suivent la documentation de chaque agent, à confirmer.</p>
+<h3>Ce que chaque agent peut faire</h3>
+<p>Fabriquer une vidéo Remotion et publier une vidéo de l'ordinateur demandent un agent qui peut lancer des
+commandes sur ton ordinateur. Les autres peuvent lire un texte avec ta voix et publier une vidéo qui a déjà un lien public.</p>
+<table>
+    <thead><tr><th>Agent</th><th>Fabriquer une vidéo (Remotion)</th><th>Publier une vidéo de l'ordinateur</th>
+        <th>Publier une vidéo avec un lien public</th><th>Lire avec ta voix</th><th>Testé</th></tr></thead>
+    <tbody>
+        <tr><td><strong>Claude Code</strong> (application Claude, onglet Code)</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
+        <tr><td>claude.ai (navigateur, téléphone)</td><td>❌</td><td>❌</td><td>✅</td><td>✅</td><td>✅</td></tr>
+        <tr><td>ChatGPT (navigateur, téléphone)</td><td>❌</td><td>❌</td><td>✅</td><td>✅</td><td>à tester</td></tr>
+        <tr><td>Cursor</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>à tester</td></tr>
+        <tr><td>VS Code (Copilot, mode agent)</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>à tester</td></tr>
+        <tr><td>Gemini CLI</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>à tester</td></tr>
+        <tr><td>Windsurf</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>à tester</td></tr>
+    </tbody>
+</table>
+
+<h3>Comment ajouter le connecteur</h3>
 <table>
     <thead><tr><th>Agent</th><th>Où l'ajouter</th><th>Réglage</th></tr></thead>
     <tbody>

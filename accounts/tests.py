@@ -279,3 +279,11 @@ class AccueilTests(TestCase):
         self.assertContains(reponse, "Démarrer (0 / 5)")
         YouTubeCredentials.objects.create(user=User.objects.get(username="samba"), token_json="{}")
         self.assertContains(self.client.get(reverse("accueil")), "Démarrer (1 / 5)")
+
+
+
+class AgentsIATests(TestCase):
+    def test_tableau_des_capacites_des_agents(self):
+        reponse = self.client.get(reverse("guide_claude"))
+        for mot in ["Ce que chaque agent peut faire", "Fabriquer une vidéo (Remotion)", "ChatGPT", "Cursor", "Gemini CLI"]:
+            self.assertContains(reponse, mot)

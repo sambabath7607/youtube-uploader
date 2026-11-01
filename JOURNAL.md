@@ -603,3 +603,9 @@ Tenue à jour : cocher ici quand une ligne est faite.
 - Tests : 119 OK (9 sautés sans le paquet mcp).
 - Restent hors code : démarches Google (Samba), paiement Stripe de l'offre Pro (clés Stripe nécessaires), essais réels
   des autres agents, ménage du PC (commande donnée à Samba).
+
+### Guide : tableau « Ce que chaque agent peut faire » (1er novembre 2026)
+- Demande de Samba : la page des autres agents doit dire lesquels fabriquent des vidéos Remotion et lesquels publient.
+- Colonnes : fabriquer (Remotion), publier une vidéo de l'ordinateur (preparer_envoi + commande), publier avec un lien
+  public (envoyer_video), lire avec la voix, testé. Avec terminal (Claude Code, Cursor, VS Code, Gemini CLI, Windsurf) :
+  tout ; sans terminal (claude.ai, ChatGPT) : voix + publication par lien public. Seuls Claude Code et claude.ai sont testés.
