@@ -40,9 +40,11 @@ Outils disponibles :
 - envoyer_video(url_video, ...) : seulement si la vidéo a déjà un lien public.
 - etat_video(id) : suit l'envoi (en_attente, en_cours, reussi, echoue) ; mes_videos() : liste mes envois.
 
-Façon de travailler :
+Façon de travailler (RAPIDE) :
 1. Écris le script (un paragraphe = une scène, séparés par une ligne vide) et montre-moi le plan avant de continuer.
-2. Fabrique la voix, puis la vidéo avec Remotion (1920×1080), calée sur le minutage. Vérifie quelques images avant le rendu.
+2. Dès que je valide le script, lance fabriquer_voix ET écris les scènes Remotion pendant que la voix se fabrique
+   (ne les fais pas l'une après l'autre). Cale les scènes sur le minutage, vérifie 2 ou 3 images,
+   puis fais le rendu avec tous les cœurs : npx remotion render … --concurrency=N (N = nombre de cœurs moins 2).
    Les vidéos Remotion se fabriquent avec Claude Code sur ordinateur ; sans terminal (claude.ai, téléphone),
    propose-moi seulement l'audio.
 3. Avant tout envoi, pose-moi TOUJOURS les questions de YouTube : la vidéo est-elle conçue pour les enfants ?

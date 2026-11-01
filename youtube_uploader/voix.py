@@ -47,9 +47,9 @@ TEXTE_ESSAI = ("Bonjour à tous, et bienvenue dans ce nouveau cours. "
 
 
 def lancer_lecture(texte, reference, debut=0.0):
+    # Lecture en parallèle : un paragraphe par carte graphique (jusqu'à 10 à la fois)
     import modal
-    Voix = modal.Cls.from_name(APP_MODAL, "Voix")
-    return Voix().lire.spawn(texte, reference, debut).object_id
+    return modal.Function.from_name(APP_MODAL, "lire_parallele").spawn(texte, reference, debut).object_id
 
 
 def lancer_essai(reference):

@@ -308,13 +308,15 @@ class VerifierCle:
 async def fabriquer_voix(texte: str) -> dict:
     """Lit un texte (le script d'une vidéo) avec LA VOIX DE L'UTILISATEUR, enregistrée sur la page « Ma voix » du site.
 
-    Marche à suivre pour créer une vidéo avec sa voix :
+    Marche à suivre RAPIDE pour créer une vidéo avec sa voix :
     1. Écris le script complet. Un paragraphe = une idée, paragraphes séparés par une ligne vide.
-    2. Appelle fabriquer_voix(texte). La réponse contient "travail" et "secondes_estimees" (décomptées de son quota du mois).
-    3. Appelle etat_voix(travail) toutes les 15 à 30 secondes jusqu'à "pret" (la lecture dure environ la durée de l'audio).
+    2. Dès que le script est validé, appelle fabriquer_voix(texte) : les paragraphes sont lus en même temps sur
+       plusieurs machines (environ 1 à 2 minutes). N'attends pas : écris les scènes Remotion PENDANT ce temps.
+    3. Appelle etat_voix(travail) toutes les 15 secondes jusqu'à "pret".
     4. Télécharge "url_audio" (fichier wav, valable 24 h) et cale les animations sur "minutage" (début et durée de chaque paragraphe).
-    5. Fabrique la vidéo (Remotion, sur l'ordinateur de l'utilisateur, avec Claude Code), puis envoie-la avec contenu_ia = true :
-       une voix clonée est un contenu modifié par IA.
+    5. Fabrique la vidéo avec Remotion en utilisant TOUS les cœurs : npx remotion render … --concurrency=N
+       (N = nombre de cœurs moins 2), puis envoie-la avec preparer_envoi (contenu_ia = true : une voix clonée
+       est un contenu modifié par IA).
     Les vidéos avancées (Remotion) se fabriquent avec Claude Code sur ordinateur. Sans terminal (claude.ai, téléphone),
     propose seulement l'audio à l'utilisateur.
     Erreurs : voix_absente ou mode_voix (l'utilisateur doit régler sa voix sur le site), quota_voix_atteint (s'arrêter et prévenir).

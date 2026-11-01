@@ -51,7 +51,20 @@ def morceaux(paragraphe):
         yield lot
 
 
-@app.cls(gpu="T4", image=image_voix, volumes={str(DOSSIER_AUDIO): volume}, scaledown_window=60, timeout=3 * 3600)
+def rogner(son, sr, seuil=0.01, marge=0.05):
+    """Retire le silence que le modèle laisse au début et à la fin de chaque morceau (jusqu'à ~2 s par phrase)."""
+    import torch
+    fort = (son.abs() > seuil).any(dim=0).nonzero()
+    if len(fort) == 0:
+        return son[:, :0]
+    garde = int(sr * marge)
+    return son[:, max(0, int(fort[0]) - garde): min(son.shape[1], int(fort[-1]) + garde)]
+
+
+# Jusqu'à 10 cartes graphiques en même temps : chaque paragraphe est lu sur sa propre machine.
+# scaledown_window = 5 min : une machine déjà prête resservira (test de voix puis lecture, plusieurs vidéos).
+@app.cls(gpu="T4", image=image_voix, volumes={str(DOSSIER_AUDIO): volume}, scaledown_window=300,
+         max_containers=10, timeout=3 * 3600)
 class Voix:
     @modal.enter()
     def charger(self):
@@ -88,7 +101,7 @@ class Voix:
                 sons = []
                 for m in morceaux(paragraphe):
                     son = self.modele.generate(m, language_id="fr", audio_prompt_path=wav, **REGLAGE)
-                    sons += [son.cpu(), silence(PAUSE_PHRASE)]
+                    sons += [rogner(son.cpu(), sr), silence(PAUSE_PHRASE)]
                 son = torch.cat(sons, dim=1)
                 duree = son.shape[1] / sr
                 minutage.append({"paragraphe": i, "debut": round(position, 2), "duree": round(duree, 2),
@@ -99,6 +112,26 @@ class Voix:
         url = self.sauver(torch.cat(tout, dim=1))
         volume.commit()
         return {"url": url, "duree_audio": round(position, 1), "minutage": minutage}
+
+    @modal.method()
+    def lire_paragraphe(self, texte: str, reference: bytes, debut: float = 0.0) -> bytes:
+        """Un paragraphe, silences rognés ; renvoie l'audio en wav (les paragraphes sont lus en parallèle)."""
+        import io
+
+        import torch
+        import torchaudio as ta
+
+        with tempfile.TemporaryDirectory() as dossier:
+            wav = self.preparer_reference(reference, dossier, debut)
+            torch.manual_seed(42)
+            sr = self.modele.sr
+            sons = []
+            for m in morceaux(texte):
+                son = self.modele.generate(m, language_id="fr", audio_prompt_path=wav, **REGLAGE)
+                sons += [rogner(son.cpu(), sr), torch.zeros(1, int(sr * PAUSE_PHRASE))]
+        tampon = io.BytesIO()
+        ta.save(tampon, torch.cat(sons, dim=1), sr, format="wav")
+        return tampon.getvalue()
 
     @modal.method()
     def essayer(self, texte: str, reference: bytes) -> list:
@@ -123,6 +156,30 @@ class Voix:
                 propositions.append({"debut": debut, "url": self.sauver(son.cpu())})
         volume.commit()
         return propositions
+
+
+@app.function(image=image_voix, volumes={str(DOSSIER_AUDIO): volume}, timeout=3 * 3600)
+def lire_parallele(texte: str, reference: bytes, debut: float = 0.0) -> dict:
+    """Utilisée par le site : chaque paragraphe part sur sa propre carte graphique (jusqu'à 10 à la fois),
+    puis les morceaux sont assemblés dans l'ordre avec le minutage. Cette fonction n'utilise pas de carte graphique."""
+    import io
+
+    import torch
+    import torchaudio as ta
+
+    paragraphes = [p.strip() for p in re.split(r"\n\s*\n", texte) if p.strip()]
+    audios = list(Voix().lire_paragraphe.map(paragraphes, kwargs={"reference": reference, "debut": debut}))
+    tout, minutage, position, sr = [], [], 0.0, 24000
+    for i, (paragraphe, audio) in enumerate(zip(paragraphes, audios), 1):
+        son, sr = ta.load(io.BytesIO(audio))
+        duree = son.shape[1] / sr
+        minutage.append({"paragraphe": i, "debut": round(position, 2), "duree": round(duree, 2), "texte": paragraphe})
+        position += duree + PAUSE_PARAGRAPHE
+        tout += [son, torch.zeros(1, int(sr * PAUSE_PARAGRAPHE))]
+    jeton = secrets.token_urlsafe(32)
+    ta.save(str(DOSSIER_AUDIO / f"{jeton}.wav"), torch.cat(tout, dim=1), sr)
+    volume.commit()
+    return {"url": f"{telecharger.get_web_url()}?jeton={jeton}", "duree_audio": round(position, 1), "minutage": minutage}
 
 
 @app.function(image=image_legere, volumes={str(DOSSIER_AUDIO): volume})

@@ -609,3 +609,15 @@ Tenue à jour : cocher ici quand une ligne est faite.
 - Colonnes : fabriquer (Remotion), publier une vidéo de l'ordinateur (preparer_envoi + commande), publier avec un lien
   public (envoyer_video), lire avec la voix, testé. Avec terminal (Claude Code, Cursor, VS Code, Gemini CLI, Windsurf) :
   tout ; sans terminal (claude.ai, ChatGPT) : voix + publication par lien public. Seuls Claude Code et claude.ai sont testés.
+
+## Vitesse (1er novembre 2026)
+- Voix : service Modal `lire_parallele` (un paragraphe par carte graphique, 10 au maximum, silences de début et de fin
+  rognés : ~2 s par phrase en moins) ; `scaledown_window` 5 min. Mesuré : 352 mots (2 min 05 d'audio) en 91 s, au lieu
+  d'environ 4 min. youtube_uploader/voix.py appelle maintenant `lire_parallele`.
+- Outils MCP et guide : lancer fabriquer_voix dès que le script est validé et écrire les scènes pendant la fabrication ;
+  rendu Remotion avec `--concurrency`.
+- Rendu Remotion mesuré sur le PC de Samba (vidéo de 28 s) : 4 cœurs 131 s ; 10 cœurs 121 s (tests en parallèle) ;
+  projet préparé une fois (`remotion bundle`, 9 s) + 10 cœurs : 156 s en 1080p, 133 s en 720p.
+  → le PC (processeur de portable) rend environ 4 à 5 fois plus lentement que la durée de la vidéo, quels que soient
+  les réglages : c'est la limite. Ce que Claude avait annoncé (« 2 fois plus rapide avec 10 cœurs ») était faux.
+- 120 tests OK.
