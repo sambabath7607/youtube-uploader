@@ -7,7 +7,11 @@
 
 <h2>Ma chaîne YouTube</h2>
 {% if user.youtubecredentials %}
-    <p>Chaîne YouTube connectée.</p>
+    {% if user.youtubecredentials.chaine_titre %}
+        <p>Chaîne YouTube connectée : <strong>{{ user.youtubecredentials.chaine_titre }}</strong></p>
+    {% else %}
+        <p>Chaîne YouTube connectée. <small>(Son nom s'affichera après ton premier envoi : YouTube le donne à ce moment-là.)</small></p>
+    {% endif %}
     <form method="post" action="{% url 'deconnecter_youtube' %}" id="form-deconnecter">
         {% csrf_token %}
         <button type="submit">Déconnecter ma chaîne YouTube</button>

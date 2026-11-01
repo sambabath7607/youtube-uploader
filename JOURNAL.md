@@ -499,3 +499,65 @@ dans le connecteur claude.ai). Pour chaque utilisateur, sur son propre compte.
 | ChatGPT | connecteurs MCP | Leur mode d'authentification (souvent OAuth) ; documentation officielle à lire |
 | Cursor, VS Code, Gemini… | MCP | Mode d'ajout et d'authentification de chacun |
 | Pour tous | — | Connexion en un clic (OAuth, spécification MCP 2026-07-28) : rend le connecteur compatible avec le plus d'agents |
+
+---
+
+## 📋 LISTE DE TOUT CE QUI EST PRÉVU MAIS PAS ENCORE FAIT (bilan du 31 octobre 2026)
+Tenue à jour : cocher ici quand une ligne est faite.
+
+### A. Obligatoire avant d'ouvrir la plateforme au public (Google / YouTube)
+| N° | Fonctionnalité | Qui | État |
+|---|---|---|---|
+| A1 | Laisser l'utilisateur choisir la visibilité (publique / non répertoriée / privée) ; le code force « private » | Claude | ✅ (PC) |
+| A2 | Afficher le nom de la chaîne YouTube connectée (site + outil `ma_chaine` pour Claude) | Claude | ✅ (PC) après le 1er envoi ; avant : demanderait le droit youtube.readonly |
+| A3 | Règle des 30 jours sur les données venant de l'API YouTube (youtube_id…) : analyser et appliquer | Claude | ❌ |
+| A4 | Vérifier la suppression des données sous 7 jours après une révocation | Claude | ❌ à vérifier |
+| A5 | Page d'accueil publique de api.batchcodeia.com (Google refuse une simple page de connexion) | Claude | ❌ |
+| A6 | Démarches Google : domaine dans Search Console, passage en Production, vidéo de démonstration, demande de vérification, audit du quota | Samba (guidé) | ❌ |
+| A7 | Retirer l'ancien accès « token.json » sur myaccount.google.com/permissions | Samba | ❓ |
+
+### B. Connexion des agents IA
+| N° | Fonctionnalité | État |
+|---|---|---|
+| B1 | Connexion en un clic (OAuth, spécification MCP 2026-07-28) : plus de clé à copier ; nécessaire pour plusieurs agents | ❌ |
+| B2 | Plusieurs clés d'API par compte (une par appareil / agent), pour qu'une nouvelle clé n'annule pas les autres | ❌ |
+| B3 | Autres agents IA : ChatGPT, Cursor, VS Code, Gemini… (documentation, réglages, tests) | ❌ |
+| B4 | Confirmer par un clic que le bouton « Envoyer une vidéo avec Claude » garde la demande déjà écrite | ❓ |
+
+### C. Voix et vidéos
+| N° | Fonctionnalité | État |
+|---|---|---|
+| C1 | « Mes préférences de publication » : répondre une fois aux 2 questions YouTube (enfants, IA) | ❌ |
+| C2 | Outil `mon_quota` pour Claude (le guide propose « Combien de minutes me reste-t-il ? » mais aucun outil ne le dit) | ✅ (PC) outil `mon_compte` |
+| C3 | Mode « Sur mon PC » : le choix existe sur la page Ma voix, mais rien ne le fait fonctionner | ✅ retiré (il demandait d'installer 5 Go chez l'utilisateur) |
+| C4 | Offre Pro payante (Stripe) avec plus de minutes ; relever le quota du propriétaire pour les longues vidéos | ❌ |
+| C5 | Tableau de bord « Mes vidéos » sur le site (liste, état, lien YouTube) | ❌ |
+| C6 | Nettoyer les envois « en attente du fichier » jamais déposés (ils comptent dans la limite du jour) | ❌ |
+| C7 | Éviter les doublons si Claude renvoie deux fois la même vidéo | ❌ |
+| C8 | Courriels : « ta vidéo est en ligne », « reconnecte ta chaîne » (Brevo) | ❌ |
+| C9 | Page « Démarrer » avec coches (YouTube connecté, voix, Claude connecté, 1re vidéo) | ❌ |
+| C10 | Plus tard : vidéos fabriquées par le serveur (téléphone), annuaire officiel des connecteurs Anthropic | ❌ plus tard |
+
+### D. Serveur et sécurité
+| N° | Fonctionnalité | État |
+|---|---|---|
+| D1 | Mettre en ligne les Parties 23 + guide + bouton (pull, migrate, redémarrer youtube-uploader ET youtube-mcp) | ⏳ Samba |
+| D2 | Sauvegardes automatiques de la base (avec chmod 600) + copie de TOKEN_ENCRYPTION_KEY en lieu sûr | ❌ |
+
+### E. Ménage
+| N° | Fonctionnalité | État |
+|---|---|---|
+| E1 | Supprimer du PC l'atelier-voix d'essai, Python 3.11, ffmpeg, le cache du modèle (5 à 8 Go) | ❌ |
+| E2 | blog/settings.py : 32 lignes vides ajoutées par erreur (jamais envoyées sur GitHub) | ❌ |
+
+### Étape 2 de la liste : A1, A2, C2, C3 (31 octobre 2026, sur le PC)
+- A1 : `Video.visibilite` (private / unlisted / public, privée par défaut) ; formulaire du site (boutons radio),
+  API (videos, envois), outils MCP `envoyer_video` et `preparer_envoi` (paramètre `visibilite`, Claude doit demander) ;
+  le worker transmet la visibilité à YouTube au lieu de forcer « private ».
+- A2 : `YouTubeCredentials.chaine_titre` / `chaine_id`, remplis avec la réponse de YouTube après chaque envoi
+  (`upload_video` renvoie maintenant la réponse complète) ; effacés à la reconnexion ; affichés sur l'accueil.
+  Le droit actuel (youtube.upload) ne permet pas de lire le nom avant le 1er envoi.
+- C2 : API GET /youtube/api/v1/compte/ + outil MCP `mon_compte` (chaîne, voix, minutes restantes, tests et envois du jour).
+- C3 : mode « Sur mon PC » retiré (migration 0007 : les voix « pc » passent « aucune »).
+- Guide « Utiliser avec Claude » et README mis à jour (mon_compte, visibilité).
+- Migration 0007. Tests VisibiliteEtChaineTests (5). 96 tests OK.

@@ -35,11 +35,16 @@ def prendre_prochaine_video():
 
 def envoyer(video):
     try:
-        video.youtube_id = upload_video(
+        reponse = upload_video(
             video.fichier.path, video.titre, video.description,
-            "private", user=video.user,
+            video.visibilite, user=video.user,
             pour_enfants=video.pour_enfants, contenu_ia=video.contenu_ia,
         )
+        video.youtube_id = reponse["id"]
+        snippet = reponse.get("snippet") or {}
+        if snippet.get("channelTitle"):
+            YouTubeCredentials.objects.filter(user=video.user).update(
+                chaine_titre=snippet["channelTitle"], chaine_id=snippet.get("channelId", ""))
         video.etat = "reussi"
     except Exception as e:
         video.etat = "echoue"

@@ -12,6 +12,9 @@ ESSAIS_PAR_JOUR = 3                # « Tester ma voix » : 3 tests par jour, no
 class YouTubeCredentials(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     token_json = models.TextField()
+    # Nom de la chaîne : renvoyé par YouTube à chaque envoi (le droit youtube.upload ne permet pas de le lire avant)
+    chaine_titre = models.CharField(max_length=200, blank=True)
+    chaine_id = models.CharField(max_length=50, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
@@ -33,6 +36,8 @@ class Video(models.Model):
     fichier = models.FileField(upload_to="videos/")
     pour_enfants = models.BooleanField()
     contenu_ia = models.BooleanField(default=False)
+    VISIBILITES = [("private", "Privée"), ("unlisted", "Non répertoriée"), ("public", "Publique")]
+    visibilite = models.CharField(max_length=10, choices=VISIBILITES, default="private")   # choisie par l'utilisateur
     etat = models.CharField(max_length=20, choices=ETATS, default="en_attente")
     youtube_id = models.CharField(max_length=50, blank=True)
     erreur = models.TextField(blank=True)
@@ -44,7 +49,6 @@ class Video(models.Model):
 class VoixUtilisateur(models.Model):
     MODES = [
         ("en_ligne", "En ligne (rapide, sans installation)"),
-        ("pc", "Sur mon PC (gratuit, plus lent)"),
         ("aucune", "Sans voix"),
     ]
 

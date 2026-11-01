@@ -236,7 +236,7 @@ class WorkerTests(TestCase):
         return Video.objects.create(user=self.user, titre="Test", pour_enfants=False, etat=etat,
                                     fichier=faux_fichier())
 
-    @patch("youtube_uploader.envois.upload_video", return_value="abc123")
+    @patch("youtube_uploader.envois.upload_video", return_value={"id": "abc123", "snippet": {"channelTitle": "BATCH CODE AI", "channelId": "UC123"}})
     def test_le_worker_envoie_la_video_en_attente(self, upload):
         video = self.video()
         call_command("traiter_envois", "--une-fois")
@@ -280,7 +280,7 @@ class FormulaireEnvoiTests(TestCase):
 
     def envoyer(self):
         return self.client.post(reverse("nouvelle_video"),
-                                {"titre": "Test", "pour_enfants": "False", "fichier": faux_fichier()})
+                                {"titre": "Test", "pour_enfants": "False", "visibilite": "private", "fichier": faux_fichier()})
 
     @patch("youtube_uploader.envois.upload_video")
     def test_formulaire_met_en_attente_sans_envoyer(self, upload):
@@ -414,7 +414,7 @@ class ApiVoixTests(TestCase):
         self.assertEqual(self.lancer().json()["code"], "voix_absente")
 
     def test_mode_autre_que_en_ligne(self):
-        self.voix.mode = "pc"
+        self.voix.mode = "aucune"
         self.voix.save()
         self.assertEqual(self.lancer().json()["code"], "mode_voix")
 
@@ -604,3 +604,44 @@ class PreparerEnvoiTests(TestCase):
     def test_le_worker_ignore_les_videos_sans_fichier(self):
         self.preparer()
         self.assertIsNone(prendre_prochaine_video())
+
+
+
+@override_settings(MEDIA_ROOT=DOSSIER_MEDIA_TEST)
+class VisibiliteEtChaineTests(TestCase):
+    """A1 : la visibilité choisie est transmise à YouTube ; A2 : le nom de la chaîne est enregistré après l'envoi."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username="samba", password="motdepasse123")
+        YouTubeCredentials.objects.create(user=self.user, token_json="{}")
+
+    @patch("youtube_uploader.envois.upload_video",
+           return_value={"id": "abc", "snippet": {"channelTitle": "BATCH CODE AI", "channelId": "UC1"}})
+    def test_visibilite_transmise_et_chaine_enregistree(self, upload):
+        Video.objects.create(user=self.user, titre="T", pour_enfants=False, visibilite="unlisted", fichier=faux_fichier())
+        call_command("traiter_envois", "--une-fois")
+        self.assertEqual(upload.call_args.args[3], "unlisted")
+        self.assertEqual(YouTubeCredentials.objects.get(user=self.user).chaine_titre, "BATCH CODE AI")
+
+    def test_visibilite_privee_par_defaut(self):
+        video = Video.objects.create(user=self.user, titre="T", pour_enfants=False, fichier="videos/x.mp4")
+        self.assertEqual(video.visibilite, "private")
+
+    def test_visibilite_inconnue_refusee_par_l_api(self):
+        client = APIClient()
+        client.credentials(HTTP_AUTHORIZATION="Token " + CleApi.creer_pour(self.user))
+        reponse = client.post(reverse("api_preparer_envoi"),
+                              {"titre": "T", "pour_enfants": False, "visibilite": "amis"}, format="json")
+        self.assertEqual(reponse.status_code, 400)
+
+    def test_mon_compte(self):
+        YouTubeCredentials.objects.filter(user=self.user).update(chaine_titre="BATCH CODE AI")
+        client = APIClient()
+        client.credentials(HTTP_AUTHORIZATION="Token " + CleApi.creer_pour(self.user))
+        donnees = client.get(reverse("api_mon_compte")).json()
+        self.assertEqual(donnees["chaine_youtube"]["nom"], "BATCH CODE AI")
+        self.assertEqual(donnees["envois_restants_aujourd_hui"], LIMITE_ENVOIS_PAR_JOUR)
+        self.assertFalse(donnees["voix"]["enregistree"])
+
+    def test_mon_compte_sans_cle_refuse(self):
+        self.assertEqual(APIClient().get(reverse("api_mon_compte")).status_code, 401)

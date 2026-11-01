@@ -30,9 +30,11 @@ et comment utiliser ses outils.</p>
 Utilise UNIQUEMENT les outils du connecteur « Batch Code IA ». Ne me demande jamais de clé d'API ni de commande.
 
 Outils disponibles :
+- mon_compte() : chaîne YouTube connectée (son nom), voix enregistrée, minutes de voix restantes,
+  envois restants aujourd'hui. À appeler avant de créer une vidéo.
 - fabriquer_voix(texte) : lit un texte avec MA voix (enregistrée sur la page « Ma voix » du site).
   Puis etat_voix(travail) toutes les 20 secondes jusqu'à « pret » : tu reçois url_audio et le minutage de chaque paragraphe.
-- preparer_envoi(titre, pour_enfants, contenu_ia, description) : donne une adresse de dépôt secrète
+- preparer_envoi(titre, pour_enfants, contenu_ia, description, visibilite) : donne une adresse de dépôt secrète
   (valable 1 heure, une seule fois) pour envoyer sur ma chaîne une vidéo qui se trouve sur l'ordinateur.
 - envoyer_video(url_video, ...) : seulement si la vidéo a déjà un lien public.
 - etat_video(id) : suit l'envoi (en_attente, en_cours, reussi, echoue) ; mes_videos() : liste mes envois.
@@ -42,8 +44,10 @@ Façon de travailler :
 2. Fabrique la voix, puis la vidéo avec Remotion (1920×1080), calée sur le minutage. Vérifie quelques images avant le rendu.
    Les vidéos Remotion se fabriquent avec Claude Code sur ordinateur ; sans terminal (claude.ai, téléphone),
    propose-moi seulement l'audio.
-3. Avant tout envoi, pose-moi TOUJOURS les 2 questions de YouTube : la vidéo est-elle conçue pour les enfants ?
-   contient-elle des scènes réalistes générées par IA ? (une voix clonée compte comme contenu IA). Ne choisis jamais à ma place.
+3. Avant tout envoi, pose-moi TOUJOURS les questions de YouTube : la vidéo est-elle conçue pour les enfants ?
+   contient-elle des scènes réalistes générées par IA ? (une voix clonée compte comme contenu IA) ;
+   quelle visibilité : privée, non répertoriée ou publique ? Ne choisis jamais à ma place.
+   Dis-moi aussi sur quelle chaîne la vidéo va partir (mon_compte).
 4. Envoie avec preparer_envoi, suis etat_video jusqu'à « reussi », donne-moi le lien YouTube,
    puis supprime les fichiers temporaires (audio, vidéo).
 5. Limites : 5 envois par jour, 10 minutes de voix par mois. En cas d'erreur (quota_voix_atteint, voix_absente,
@@ -62,7 +66,7 @@ Façon de travailler :
         <tr><td>Partir de tes supports</td><td>« Utilise mon PowerPoint (chemin du fichier) pour la partie sur les dictionnaires et fais-en une vidéo. »</td></tr>
         <tr><td>Publier une vidéo déjà faite</td><td>« Publie la vidéo C:\…\video.mp4 sur ma chaîne avec le titre … »</td></tr>
         <tr><td>Suivre un envoi</td><td>« Où en est l'envoi de ma dernière vidéo ? »</td></tr>
-        <tr><td>Connaître tes limites</td><td>« Combien de minutes de voix me reste-t-il ce mois-ci ? » (visible aussi sur la page Ma voix)</td></tr>
+        <tr><td>Connaître tes limites</td><td>« Combien de minutes de voix me reste-t-il ce mois-ci ? » (outil mon_compte ; visible aussi sur la page Ma voix)</td></tr>
     </tbody>
 </table>
 
@@ -88,7 +92,7 @@ Pour l'instant, la plateforme est testée et documentée avec Claude ; les autre
 
 <h2>7. Bon à savoir</h2>
 <ul>
-    <li>Les vidéos arrivent sur ta chaîne avec la visibilité réglée par YouTube ; tu peux la changer dans YouTube Studio.</li>
+    <li>Tu choisis la visibilité de chaque vidéo (privée, non répertoriée ou publique) ; tu peux la changer ensuite dans YouTube Studio.</li>
     <li>Ta voix ne sert qu'à tes vidéos : personne d'autre ne peut l'utiliser, et tu peux la supprimer à tout moment.</li>
     <li>Plus de détails techniques : <a href="{% url 'guide_api' %}">Guide de l'API</a>.</li>
 </ul>

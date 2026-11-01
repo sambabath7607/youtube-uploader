@@ -9,10 +9,11 @@ from rest_framework.throttling import UserRateThrottle
 
 from accounts.authentification import CleApiAuthentication
 from .envois import probleme_avant_envoi
-from .models import Video, VoixUtilisateur
+from .models import Video, VoixUtilisateur, YouTubeCredentials
 from .depot import adresse_depot
 from .serializers import PreparationEnvoiSerializer, VideoSerializer
-from .voix import (etat_lecture, jeton_travail, lancer_lecture, lire_jeton, quota_restant,
+from .validation import LIMITE_ENVOIS_PAR_JOUR
+from .voix import (essais_restants, etat_lecture, jeton_travail, lancer_lecture, lire_jeton, quota_restant,
                    secondes_estimees)
 
 logger = logging.getLogger(__name__)
@@ -153,3 +154,36 @@ def api_preparer_envoi(request):
         "expire_dans_secondes": 3600,
         "commande": f'curl -F "fichier=@CHEMIN_DE_LA_VIDEO" "{adresse}"',
     }, status=status.HTTP_201_CREATED)
+
+
+@api_view(["GET"])
+@authentication_classes([CleApiAuthentication])
+@permission_classes([IsAuthenticated])
+@throttle_classes([LimiteRequetes])
+def api_mon_compte(request):
+    """Résumé du compte pour Claude : chaîne connectée, voix, minutes restantes, envois restants aujourd'hui."""
+    from django.utils import timezone
+    youtube = YouTubeCredentials.objects.filter(user=request.user).first()
+    voix = VoixUtilisateur.objects.filter(user=request.user).first()
+    debut_du_jour = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    envois_du_jour = Video.objects.filter(user=request.user, created_at__gte=debut_du_jour).count()
+    reponse = {
+        "chaine_youtube": {
+            "connectee": youtube is not None,
+            "nom": (youtube.chaine_titre or None) if youtube else None,
+            "remarque": None if (youtube is None or youtube.chaine_titre)
+            else "Nom inconnu jusqu'au premier envoi (YouTube le donne à ce moment-là).",
+        },
+        "envois_restants_aujourd_hui": max(0, LIMITE_ENVOIS_PAR_JOUR - envois_du_jour),
+        "voix": {"enregistree": False},
+    }
+    if voix is not None and voix.extrait and voix.consentement_le:
+        restant = quota_restant(voix)
+        reponse["voix"] = {
+            "enregistree": True,
+            "mode": voix.mode,
+            "secondes_restantes_ce_mois": restant,
+            "texte": f"{restant // 60} min {restant % 60:02d} s",
+            "tests_restants_aujourd_hui": essais_restants(voix),
+        }
+    return Response(reponse)

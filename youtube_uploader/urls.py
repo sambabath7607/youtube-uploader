@@ -15,6 +15,7 @@ urlpatterns = [
     path("api/v1/videos/<int:video_id>/", api.api_etat_video, name="api_etat_video"),
     path("api/v1/envois/", api.api_preparer_envoi, name="api_preparer_envoi"),
     path("depot/<str:jeton>/", depot.depot_video, name="depot_video"),
+    path("api/v1/compte/", api.api_mon_compte, name="api_mon_compte"),
     path("api/v1/voix/", api.api_voix, name="api_voix"),
     path("api/v1/voix/<str:travail>/", api.api_etat_voix, name="api_etat_voix"),
 ]

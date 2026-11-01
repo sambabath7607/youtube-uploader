@@ -11,9 +11,16 @@ class VideoForm(forms.ModelForm):
         widget=forms.RadioSelect,
     )
 
+    visibilite = forms.ChoiceField(
+        label="Visibilité sur YouTube",
+        choices=Video.VISIBILITES,
+        initial="private",
+        widget=forms.RadioSelect,
+    )
+
     class Meta:
         model = Video
-        fields = ["titre", "description", "fichier", "pour_enfants",'contenu_ia']
+        fields = ["titre", "description", "fichier", "pour_enfants", "contenu_ia", "visibilite"]
 
     def clean_fichier(self):
         fichier = self.cleaned_data["fichier"]

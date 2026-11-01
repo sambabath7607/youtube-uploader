@@ -31,6 +31,7 @@ load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
 ADRESSE_API = os.environ.get("MCP_ADRESSE_API", "https://api.batchcodeia.com/youtube/api/v1/videos/")
 ADRESSE_VOIX = ADRESSE_API.replace("/videos/", "/voix/")
 ADRESSE_ENVOIS = ADRESSE_API.replace("/videos/", "/envois/")
+ADRESSE_COMPTE = ADRESSE_API.replace("/videos/", "/compte/")
 TAILLE_MAX = 500 * 1024 * 1024
 HOTE, PORT = "127.0.0.1", 8100
 MESSAGE_CONNEXION = "Problème de connexion. Réessaie dans un instant."
@@ -171,7 +172,7 @@ def telecharger(url, fichier):
     return "Trop de redirections."
 
 
-def envoyer(cle, url_video, titre, description, pour_enfants, contenu_ia):
+def envoyer(cle, url_video, titre, description, pour_enfants, contenu_ia, visibilite="private"):
     extension = os.path.splitext(urlparse(url_video).path)[1].lower() or ".mp4"
     try:
         with tempfile.NamedTemporaryFile(suffix=extension) as fichier:
@@ -188,6 +189,7 @@ def envoyer(cle, url_video, titre, description, pour_enfants, contenu_ia):
                     "description": description,
                     "pour_enfants": "true" if pour_enfants else "false",
                     "contenu_ia": "true" if contenu_ia else "false",
+                    "visibilite": visibilite,
                 },
                 files={"fichier": (f"video{extension}", fichier)},
                 timeout=300,
@@ -218,13 +220,15 @@ def ecrire(cle, url, donnees):
 # ---------- outils visibles par Claude ----------
 
 @mcp.tool()
-async def envoyer_video(url_video: str, titre: str, pour_enfants: bool, contenu_ia: bool, description: str = "") -> dict:
-    """Envoie une vidéo sur la chaîne YouTube de l'utilisateur (en privé).
+async def envoyer_video(url_video: str, titre: str, pour_enfants: bool, contenu_ia: bool, description: str = "",
+                        visibilite: str = "private") -> dict:
+    """Envoie une vidéo sur la chaîne YouTube de l'utilisateur.
 
     Avant d'appeler cet outil, demande TOUJOURS à l'utilisateur :
     1. si la vidéo est conçue pour les enfants (pour_enfants) ;
     2. si elle contient des scènes réalistes générées ou modifiées par IA (contenu_ia).
     Ne choisis jamais à sa place, même pour un test.
+    visibilite : « private » (privée, par défaut), « unlisted » (non répertoriée) ou « public » : demande-lui.
 
     url_video : lien direct et public vers le fichier vidéo (mp4, mov ou webm, 500 Mo maximum).
     Si la vidéo est sur l'ordinateur (pas de lien public), utilise plutôt preparer_envoi.
@@ -235,7 +239,8 @@ async def envoyer_video(url_video: str, titre: str, pour_enfants: bool, contenu_
     if probleme:
         return probleme
     async with telechargements:
-        return await anyio.to_thread.run_sync(envoyer, cle, url_video, titre, description, pour_enfants, contenu_ia)
+        return await anyio.to_thread.run_sync(envoyer, cle, url_video, titre, description, pour_enfants, contenu_ia,
+                                              visibilite)
 
 
 @mcp.tool()
@@ -334,7 +339,8 @@ async def etat_voix(travail: str) -> dict:
 
 
 @mcp.tool()
-async def preparer_envoi(titre: str, pour_enfants: bool, contenu_ia: bool, description: str = "") -> dict:
+async def preparer_envoi(titre: str, pour_enfants: bool, contenu_ia: bool, description: str = "",
+                         visibilite: str = "private") -> dict:
     """Prépare l'envoi sur YouTube d'une vidéo qui se trouve sur l'ordinateur (par exemple fabriquée avec Remotion).
 
     Avant d'appeler cet outil, demande TOUJOURS à l'utilisateur :
@@ -342,6 +348,7 @@ async def preparer_envoi(titre: str, pour_enfants: bool, contenu_ia: bool, descr
     2. si elle contient des scènes réalistes générées ou modifiées par IA (contenu_ia). Une voix clonée
        (fabriquer_voix) compte comme contenu IA : contenu_ia = true.
     Ne choisis jamais à sa place.
+    visibilite : « private » (privée, par défaut), « unlisted » (non répertoriée) ou « public » : demande-lui.
 
     La réponse contient "adresse_depot" : une adresse secrète, valable 1 heure, utilisable une seule fois.
     Dépose la vidéo dessus avec la commande donnée dans "commande" (curl -F "fichier=@chemin/video.mp4" "adresse"),
@@ -352,5 +359,18 @@ async def preparer_envoi(titre: str, pour_enfants: bool, contenu_ia: bool, descr
     cle, probleme = cle_ou_erreur()
     if probleme:
         return probleme
-    donnees = {"titre": titre, "description": description, "pour_enfants": pour_enfants, "contenu_ia": contenu_ia}
+    donnees = {"titre": titre, "description": description, "pour_enfants": pour_enfants, "contenu_ia": contenu_ia,
+               "visibilite": visibilite}
     return await anyio.to_thread.run_sync(ecrire, cle, ADRESSE_ENVOIS, donnees)
+
+
+@mcp.tool()
+async def mon_compte() -> dict:
+    """Résumé du compte de l'utilisateur : chaîne YouTube connectée (et son nom), voix enregistrée,
+    minutes de voix restantes ce mois-ci, tests de voix et envois restants aujourd'hui.
+    Utilise-le avant de créer une vidéo, et quand l'utilisateur demande ce qu'il lui reste.
+    Indique-lui toujours le nom de la chaîne sur laquelle la vidéo va partir (s'il est connu)."""
+    cle, probleme = cle_ou_erreur()
+    if probleme:
+        return probleme
+    return await anyio.to_thread.run_sync(lire, cle, ADRESSE_COMPTE)

@@ -15,7 +15,8 @@ class VideoSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Video
-        fields = ["id", "titre", "description", "fichier", "pour_enfants",'contenu_ia', "etat", "youtube_id", "erreur", "created_at"]
+        fields = ["id", "titre", "description", "fichier", "pour_enfants", "contenu_ia", "visibilite", "etat",
+                  "youtube_id", "erreur", "created_at"]
         read_only_fields = ["etat", "youtube_id", "erreur", "created_at"]
         # Le fichier est reçu, mais jamais renvoyé : pas de chemin du serveur dans les réponses
         extra_kwargs = {"fichier": {"write_only": True}}
@@ -33,4 +34,4 @@ class PreparationEnvoiSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Video
-        fields = ["id", "titre", "description", "pour_enfants", "contenu_ia"]
+        fields = ["id", "titre", "description", "pour_enfants", "contenu_ia", "visibilite"]

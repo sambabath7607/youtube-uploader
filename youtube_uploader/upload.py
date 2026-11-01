@@ -29,8 +29,8 @@ def upload_video(chemin_video, titre, description="", statut="private", user=Non
     }
     media = MediaFileUpload(chemin_video, resumable=True)
     request = youtube.videos().insert(part="snippet,status", body=body, media_body=media)
-    response = request.execute()
-    return response["id"]
+    # Réponse complète : id de la vidéo, et snippet.channelTitle / channelId (nom de la chaîne)
+    return request.execute()
 
 def get_credentials_user(user):
     from .models import YouTubeCredentials

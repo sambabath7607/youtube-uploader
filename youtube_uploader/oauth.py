@@ -60,7 +60,7 @@ def oauth_callback(request):
         request.session.pop("code_verifier", None)
     YouTubeCredentials.objects.update_or_create(
         user=request.user,
-        defaults={"token_json": chiffrer(flow.credentials.to_json())},
+        defaults={"token_json": chiffrer(flow.credentials.to_json()), "chaine_titre": "", "chaine_id": ""},
     )
     messages.success(request, "Ta chaîne YouTube est connectée.")
     return redirect("accueil")
