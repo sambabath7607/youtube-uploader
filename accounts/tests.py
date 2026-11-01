@@ -143,11 +143,12 @@ class BoutonClaudeTests(TestCase):
         self.client.login(username="samba", password="motdepasse123")
 
     def test_bouton_absent_sans_chaine_youtube(self):
-        self.assertNotContains(self.client.get(reverse("accueil")), "Envoyer une vidéo avec Claude")
+        self.assertNotContains(self.client.get(reverse("accueil")), "Créer une vidéo avec Claude Code")
 
     def test_bouton_avec_chaine_youtube(self):
         YouTubeCredentials.objects.create(user=self.user, token_json="{}")
         reponse = self.client.get(reverse("accueil"))
-        self.assertContains(reponse, "Envoyer une vidéo avec Claude")
-        self.assertContains(reponse, "https://claude.ai/new?q=Avec%20le%20connecteur%20Batch%20Code%20IA")
+        self.assertContains(reponse, "Créer une vidéo avec Claude Code")
+        self.assertContains(reponse, reverse("guide_claude") + "#creer-une-video")
+        self.assertNotContains(reponse, "claude.ai/new")
         self.assertContains(reponse, "Autres agents IA (bientôt)")

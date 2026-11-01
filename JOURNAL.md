@@ -522,7 +522,7 @@ Tenue à jour : cocher ici quand une ligne est faite.
 | B1 | Connexion en un clic (OAuth, spécification MCP 2026-07-28) : plus de clé à copier ; nécessaire pour plusieurs agents | ❌ |
 | B2 | Plusieurs clés d'API par compte (une par appareil / agent), pour qu'une nouvelle clé n'annule pas les autres | ❌ |
 | B3 | Autres agents IA : ChatGPT, Cursor, VS Code, Gemini… (documentation, réglages, tests) | ❌ |
-| B4 | Confirmer par un clic que le bouton « Envoyer une vidéo avec Claude » garde la demande déjà écrite | ❓ |
+| B4 | Confirmer par un clic que le bouton « Envoyer une vidéo avec Claude » garde la demande déjà écrite | ✅ sans objet : bouton remplacé (voir ci-dessous) |
 
 ### C. Voix et vidéos
 | N° | Fonctionnalité | État |
@@ -541,7 +541,7 @@ Tenue à jour : cocher ici quand une ligne est faite.
 ### D. Serveur et sécurité
 | N° | Fonctionnalité | État |
 |---|---|---|
-| D1 | Mettre en ligne les Parties 23 + guide + bouton (pull, migrate, redémarrer youtube-uploader ET youtube-mcp) | ⏳ Samba |
+| D1 | Mettre en ligne les Parties 23 + guide + bouton (pull, migrate, redémarrer youtube-uploader ET youtube-mcp) | ✅ 1er novembre 2026 : 7 outils en ligne |
 | D2 | Sauvegardes automatiques de la base (avec chmod 600) + copie de TOKEN_ENCRYPTION_KEY en lieu sûr | ❌ |
 
 ### E. Ménage
@@ -569,3 +569,13 @@ Tenue à jour : cocher ici quand une ligne est faite.
 - Correction : le démarrage est déplacé tout à la fin de mcp_server.py.
 - Test ajouté `OrdreDuFichierTests` : 7 outils, tous déclarés avant le démarrage.
 - Vérification en ligne : demander la liste des outils (tools/list) au connecteur après chaque mise à jour.
+
+### « Claude Code » au lieu de « Claude » sur le site (1er novembre 2026)
+- Demande de Samba : c'est Claude Code (onglet « Code » de l'application, sur ordinateur) qui fabrique les vidéos,
+  pas claude.ai.
+- Accueil : le bouton « 🎬 Créer une vidéo avec Claude Code » mène à /guide-claude/#creer-une-video ; le lien vers
+  claude.ai/new (qui ne sait pas fabriquer de vidéo) est retiré ; textes « Utiliser avec Claude Code ».
+- Guide : titre « Utiliser la plateforme avec Claude Code », prompt qui commence par « Tu es Claude Code », section 5
+  « Créer une vidéo avec Claude Code » (ouvrir l'application → onglet Code → nouvelle session → coller le prompt →
+  demande). claude.ai sert seulement à ajouter le connecteur, lire un texte avec sa voix et suivre ses envois.
+- Guide de l'API et README mis à jour. 97 tests OK.

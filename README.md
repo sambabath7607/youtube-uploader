@@ -9,7 +9,7 @@ En ligne : https://api.batchcodeia.com
   file d'attente des envois (worker `traiter_envois`).
 - `mcp_server.py` : connecteur MCP pour Claude.
 
-## Utiliser avec Claude
+## Utiliser avec Claude Code
 Page du site : https://api.batchcodeia.com/guide-claude/ (préparer son compte, ajouter le connecteur dans claude.ai
 avec l'en-tête `x-api-key`, **prompt général** à copier, demandes types, ce qui marche sur ordinateur ou téléphone).
 Outils du connecteur : `mon_compte`, `fabriquer_voix`, `etat_voix`, `preparer_envoi`, `envoyer_video`, `etat_video`, `mes_videos`.
