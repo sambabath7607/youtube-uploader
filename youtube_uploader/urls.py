@@ -8,6 +8,7 @@ urlpatterns = [
     path("oauth/callback/", oauth.oauth_callback, name="oauth_callback"),
     path("nouvelle/", views.nouvelle_video, name="nouvelle_video"),
     path("video/<int:video_id>/", views.suivi_video, name="suivi_video"),
+    path("video/<int:video_id>/etat/", views.etat_video_json, name="etat_video_json"),
     path("ma-voix/", views.ma_voix, name="ma_voix"),
     path("mes-videos/", views.mes_videos, name="mes_videos_site"),
     path("mes-preferences/", views.mes_preferences, name="mes_preferences"),

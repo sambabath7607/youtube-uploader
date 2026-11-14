@@ -37,11 +37,43 @@ def nouvelle_video(request):
     return render(request, "youtube_uploader/nouvelle_video.html", {"form": form, "probleme": message})
 
 
+ETATS_SUIVIS = ("fabrication", "en_attente", "en_cours")   # la page de suivi se met à jour tant que la vidéo est dans ces états
+
+
+def detail_suivi(video):
+    # Texte sous l'état : même texte pour la page de suivi et pour la vue JSON
+    if video.etat == "fabrication":
+        return (f"Étape : {video.etape or 'Préparation'}. La vidéo est fabriquée sur nos serveurs, puis envoyée sur YouTube. "
+                "Cette page se met à jour toute seule toutes les 10 secondes.")
+    if video.etat in ("en_attente", "en_cours"):
+        return ("L'envoi vers YouTube se fait en arrière-plan. "
+                "Cette page se met à jour toute seule toutes les 10 secondes.")
+    return ""
+
+
 @login_required
 def suivi_video(request, video_id):
     # La vidéo d'un autre utilisateur répond 404
     video = get_object_or_404(Video, id=video_id, user=request.user)
-    return render(request, "youtube_uploader/resultat.html", {"video": video})
+    return render(request, "youtube_uploader/resultat.html", {"video": video, "detail": detail_suivi(video)})
+
+
+@login_required
+@never_cache
+def etat_video_json(request, video_id):
+    # Vue JSON de la page de suivi (session de l'utilisateur, aucune clé) : seulement mes vidéos
+    video = Video.objects.filter(id=video_id, user=request.user).first()
+    if video is None:
+        return JsonResponse({"erreur": "Vidéo introuvable."}, status=404)
+    return JsonResponse({
+        "etat": video.etat,
+        "etat_libelle": video.get_etat_display(),
+        "classe": video.classe_badge,
+        "detail": detail_suivi(video),
+        "youtube_id": video.youtube_id,
+        "erreur": video.erreur,
+        "suivi_actif": video.etat in ETATS_SUIVIS,
+    })
 
 
 @login_required

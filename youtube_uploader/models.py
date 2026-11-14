@@ -56,6 +56,17 @@ class Video(models.Model):
     def __str__(self):
         return self.titre
 
+    @property
+    def classe_badge(self):
+        # Couleur du badge d'état (static/css/style.css) : le texte reste lisible sur chaque fond
+        if self.etat == "reussi":
+            return "badge-reussi"
+        if self.etat in ("echoue", "fabrication_echouee"):
+            return "badge-echoue"
+        if self.etat in ("en_cours", "fabrication", "reception"):
+            return "badge-en_cours"
+        return "badge-en_attente"
+
 
 class PreferencesPublication(models.Model):
     """Réponses par défaut aux questions de YouTube : Claude ne les repose plus à chaque vidéo.

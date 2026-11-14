@@ -890,3 +890,6 @@ scp TON_UTILISATEUR@TON_SERVEUR:~/sauvegardes_youtube/NOM_DE_LA_COPIE.sqlite3 es
   moins d'1 min → annulation dans « Mes abonnements » → retour à Gratuit (fin de période ou tout de suite).
 - **B3** : sur téléphone, claude.ai : « Fais une vidéo de 1 min sur les listes Python avec ma voix » → lien youtu.be ;
   chronomètre noté ici.
+
+## Lot Design — corrections d'interface selon l'audit (14 novembre 2026, sur le PC)
+- Mode clair forcé (`data-theme="light"`), couleurs du site dans les variables de `style.css` (Pico gardé, bleu unique `--pico-primary`), rouge `#D70015`, messages success/error, badges d'état accessibles (`badge_etat.html`), boutons et zones de 44 px, pied de page en liste, tableau défilant, libellés accessibles (aria-label, texte caché, role=status, aria-live). Suivi de vidéo mis à jour en direct via la vue JSON `etat_video_json` (session, uniquement mes vidéos), sans meta refresh. Tests : `youtube_uploader/tests_design.py`. Aucune migration, aucun nouveau paquet. À faire sur le serveur après `git pull` : collecte des fichiers statiques (`collectstatic`), à confirmer par Samba.

@@ -55,7 +55,7 @@ Façon de travailler (RAPIDE) :
    limite_envois_atteinte…), arrête-toi et explique-moi simplement quoi faire.
 5. Réponds en français, avec des réponses courtes et un tableau récapitulatif à chaque étape.</pre>
 <button type="button" id="copier-prompt">Copier le prompt</button>
-<span id="prompt-copie" hidden>Prompt copié.</span>
+<span id="prompt-copie" role="status"></span>
 
 <h2>3. Ce que tu peux demander</h2>
 <table>
@@ -76,7 +76,7 @@ Façon de travailler (RAPIDE) :
 <h2>4. Où ça marche</h2>
 <p>Partout où ton agent IA accepte le connecteur : la vidéo n'est jamais fabriquée chez toi.</p>
 <table>
-    <thead><tr><th></th><th>claude.ai et téléphone</th><th>Claude Code et autres agents</th></tr></thead>
+    <thead><tr><th><span class="visuellement-cachee">Action</span></th><th>claude.ai et téléphone</th><th>Claude Code et autres agents</th></tr></thead>
     <tbody>
         <tr><td>Fabriquer une vidéo avec ta voix et la publier</td><td>✅ (fabriquer_video)</td><td>✅ (fabriquer_video)</td></tr>
         <tr><td>Lire un texte avec ta voix (audio seul)</td><td>✅</td><td>✅</td></tr>
@@ -149,7 +149,7 @@ ou avec une clé de la page <a href="{% url 'ma_cle' %}">Mes clés</a> (une clé
 <script>
     document.getElementById("copier-prompt").addEventListener("click", function () {
         navigator.clipboard.writeText(document.getElementById("prompt-general").textContent).then(function () {
-            document.getElementById("prompt-copie").hidden = false;
+            document.getElementById("prompt-copie").textContent = "Prompt copié.";
         });
     });
 </script>

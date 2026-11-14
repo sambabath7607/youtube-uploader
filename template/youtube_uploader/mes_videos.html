@@ -6,6 +6,7 @@
 <p>Tous tes envois vers YouTube, du plus récent au plus ancien.</p>
 
 {% if page %}
+<div class="tableau-defilant">
 <table>
     <thead><tr><th>Titre</th><th>Date</th><th>État</th><th>Visibilité</th><th>YouTube</th></tr></thead>
     <tbody>
@@ -13,10 +14,10 @@
         <tr>
             <td>{{ video.titre }}</td>
             <td>{{ video.created_at|date:"j M Y H:i" }}</td>
-            <td>{{ video.get_etat_display }}{% if video.etat == "fabrication" and video.etape %}<br><small>{{ video.etape }}</small>{% endif %}{% if video.erreur %}<br><small>{{ video.erreur }}</small>{% endif %}</td>
+            <td>{% include "youtube_uploader/badge_etat.html" %}{% if video.etat == "fabrication" and video.etape %}<br><small>{{ video.etape }}</small>{% endif %}{% if video.erreur %}<br><small>{{ video.erreur }}</small>{% endif %}</td>
             <td>{{ video.get_visibilite_display }}</td>
             <td>
-                {% if video.youtube_id %}<a href="https://youtu.be/{{ video.youtube_id }}" target="_blank" rel="noopener">Voir</a>
+                {% if video.youtube_id %}<a href="https://youtu.be/{{ video.youtube_id }}" target="_blank" rel="noopener" aria-label="Voir « {{ video.titre }} » sur YouTube (nouvel onglet)">Voir</a>
                 {% elif video.etat == "reussi" %}<small>Lien effacé après 30 jours (règle de YouTube) : voir YouTube Studio</small>
                 {% else %}—{% endif %}
             </td>
@@ -24,8 +25,9 @@
     {% endfor %}
     </tbody>
 </table>
+</div>
 {% if page.has_other_pages %}
-<p>
+<p class="pagination">
     {% if page.has_previous %}<a href="?page={{ page.previous_page_number }}">← Plus récentes</a>{% endif %}
     Page {{ page.number }} sur {{ page.paginator.num_pages }}
     {% if page.has_next %}<a href="?page={{ page.next_page_number }}">Plus anciennes →</a>{% endif %}

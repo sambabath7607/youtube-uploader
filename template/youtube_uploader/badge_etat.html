@@ -1,0 +1,5 @@
+{% comment %}
+Badge d'état d'une vidéo. Attend « video » dans le contexte (et « id_badge » en option).
+Les couleurs (texte d'au moins 4,5:1) sont dans static/css/style.css ; le texte porte l'information, pas la couleur seule.
+{% endcomment %}
+<span class="badge {{ video.classe_badge }}"{% if id_badge %} id="{{ id_badge }}"{% endif %}>{{ video.get_etat_display }}</span>

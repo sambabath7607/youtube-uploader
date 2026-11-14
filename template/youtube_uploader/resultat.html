@@ -1,28 +1,54 @@
 {% extends "base.html" %}
 {% block titre %}Suivi de l'envoi{% endblock %}
 
-{% block entete %}
-{% if video.etat == "en_attente" or video.etat == "en_cours" or video.etat == "fabrication" %}
-    <meta http-equiv="refresh" content="10">
-{% endif %}
-{% endblock %}
-
 {% block contenu %}
 <h1>Suivi de l'envoi</h1>
 <p>Titre : {{ video.titre }}</p>
-<p>État : {{ video.get_etat_display }}</p>
-{% if video.etat == "fabrication" %}
-    <p>Étape : {{ video.etape|default:"Préparation" }}. La vidéo est fabriquée sur nos serveurs, puis envoyée sur YouTube.
-        Cette page se met à jour toute seule toutes les 10 secondes.</p>
-{% endif %}
-{% if video.etat == "en_attente" or video.etat == "en_cours" %}
-    <p>L'envoi vers YouTube se fait en arrière-plan. Cette page se met à jour toute seule toutes les 10 secondes.</p>
-{% endif %}
-{% if video.youtube_id %}
-    <p>ID YouTube : {{ video.youtube_id }}</p>
-{% endif %}
-{% if video.erreur %}
-    <p>Erreur : {{ video.erreur }}</p>
-{% endif %}
-<a href="{% url 'nouvelle_video' %}">Envoyer une autre vidéo</a>
+
+{# Zone mise à jour par le script ci-dessous : elle interroge la vue JSON de cette vidéo (session, pas de clé dans la page) #}
+<div id="etat-direct" aria-live="polite" data-url="{% url 'etat_video_json' video.id %}"
+     data-actif="{% if video.etat == 'fabrication' or video.etat == 'en_attente' or video.etat == 'en_cours' %}1{% else %}0{% endif %}">
+    <p>État : {% include "youtube_uploader/badge_etat.html" with id_badge="etat-badge" %}</p>
+    <p id="etat-detail">{{ detail }}</p>
+    <p id="etat-youtube"{% if not video.youtube_id %} hidden{% endif %}>ID YouTube : {{ video.youtube_id }}</p>
+    <p id="etat-erreur" class="message error"{% if not video.erreur %} hidden{% endif %}>Erreur : {{ video.erreur }}</p>
+</div>
+
+<p><a href="{% url 'nouvelle_video' %}">Envoyer une autre vidéo</a></p>
+
+<script>
+(function () {
+    var zone = document.getElementById("etat-direct");
+    if (zone.dataset.actif !== "1") {
+        return;
+    }
+    function afficher(d) {
+        var badge = document.getElementById("etat-badge");
+        badge.className = "badge " + d.classe;
+        badge.textContent = d.etat_libelle;
+        document.getElementById("etat-detail").textContent = d.detail;
+        var yt = document.getElementById("etat-youtube");
+        yt.textContent = "ID YouTube : " + d.youtube_id;
+        yt.hidden = !d.youtube_id;
+        var erreur = document.getElementById("etat-erreur");
+        erreur.textContent = "Erreur : " + d.erreur;
+        erreur.hidden = !d.erreur;
+    }
+    function suivre() {
+        fetch(zone.dataset.url, {credentials: "same-origin", headers: {"Accept": "application/json"}})
+            .then(function (r) {
+                if (!r.ok) { throw new Error("statut " + r.status); }
+                return r.json();
+            })
+            .then(function (d) {
+                afficher(d);
+                if (d.suivi_actif) { setTimeout(suivre, 10000); }
+            })
+            .catch(function () {
+                document.getElementById("etat-detail").textContent = "Mise à jour impossible : recharge la page.";
+            });
+    }
+    setTimeout(suivre, 10000);
+})();
+</script>
 {% endblock %}

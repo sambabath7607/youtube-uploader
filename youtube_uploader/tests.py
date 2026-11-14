@@ -290,7 +290,8 @@ class FormulaireEnvoiTests(TestCase):
         self.assertEqual(video.etat, "en_attente")
         upload.assert_not_called()
         suivi = self.client.get(reverse("suivi_video", args=[video.id]))
-        self.assertContains(suivi, 'http-equiv="refresh"')
+        self.assertContains(suivi, 'aria-live="polite"')
+        self.assertNotContains(suivi, 'http-equiv="refresh"')
 
     def test_formulaire_refuse_sans_chaine_connectee(self):
         YouTubeCredentials.objects.all().delete()

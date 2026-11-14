@@ -1,9 +1,36 @@
-:root {
+/* Couleurs du site. Pico CSS reste chargé avant ce fichier : ses variables sont alignées ici sur les nôtres.
+   Le sélecteur :root[data-theme="light"] a la même spécificité que celui de Pico, et ce fichier vient après : c'est nous qui gagnons. */
+:root,
+:root[data-theme="light"] {
     --bleu: #0066CC;
+    --bleu-fonce: #004C99;
     --fond: #F5F5F7;
+    --surface: #FFFFFF;
+    --entete: rgba(255, 255, 255, 0.9);
+    --bordure: #E5E5EA;
+    --bordure-champ: #D2D2D7;
     --texte: #1D1D1F;
     --gris: #6E6E73;
-    --rouge: #FF3B30;
+    --rouge: #D70015;          /* environ 5,4:1 avec du texte blanc */
+    --rouge-fonce: #A1000F;
+    --vert-fonce: #1B6B32;
+
+    /* Pico CSS : un seul bleu pour les boutons, les liens et le focus */
+    --pico-primary: var(--bleu);
+    --pico-primary-background: var(--bleu);
+    --pico-primary-border: var(--bleu);
+    --pico-primary-underline: rgba(0, 102, 204, 0.5);
+    --pico-primary-hover: var(--bleu-fonce);
+    --pico-primary-hover-background: var(--bleu-fonce);
+    --pico-primary-hover-border: var(--bleu-fonce);
+    --pico-primary-hover-underline: var(--bleu-fonce);
+    --pico-primary-focus: rgba(0, 102, 204, 0.35);
+    --pico-primary-inverse: #FFFFFF;
+    --pico-color: var(--texte);
+    --pico-muted-color: var(--gris);
+    --pico-background-color: var(--surface);
+    --pico-form-element-border-color: var(--bordure-champ);
+    --pico-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 * { box-sizing: border-box; }
@@ -17,39 +44,67 @@ body {
 }
 
 header {
-    background: rgba(255, 255, 255, 0.9);
-    border-bottom: 1px solid #E5E5EA;
+    background: var(--entete);
+    border-bottom: 1px solid var(--bordure);
     padding: 12px 20px;
 }
 
-header a { color: var(--texte); text-decoration: none; font-weight: 600; }
+/* Liens de l'en-tête (le bouton « S'inscrire » garde son style de bouton) */
+header a:not([role="button"]) { color: var(--texte); text-decoration: none; font-weight: 600; }
 
 main {
     max-width: 720px;
     margin: 24px auto;
     padding: 24px;
-    background: white;
+    background: var(--surface);
     border-radius: 16px;
 }
 
 a { color: var(--bleu); }
 
-button, .bouton {
-    background: var(--bleu);
-    color: white;
-    border: none;
+/* Boutons : mêmes règles pour <button>, les boutons de formulaire et les liens role="button" */
+button, [type="submit"], [type="button"], [role="button"], .bouton {
     border-radius: 10px;
     padding: 10px 18px;
     font-size: 16px;
     cursor: pointer;
+    min-height: 44px;
+    min-width: 44px;
 }
 
-button.danger { background: var(--rouge); }
+[role="button"], .bouton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+}
+
+.bouton { background: var(--bleu); color: #FFFFFF; border: none; }
+
+button.danger, [type="submit"].danger, [role="button"].danger {
+    --pico-background-color: var(--rouge);
+    --pico-border-color: var(--rouge);
+    --pico-color: #FFFFFF;
+    background: var(--rouge);
+    border-color: var(--rouge);
+    color: #FFFFFF;
+}
+
+/* Lien d'action dangereuse (ex. « Supprimer mon compte ») : rouge, pas de bouton */
+a.danger:not([role="button"]) { color: var(--rouge); font-weight: 600; }
+
+/* Zones cliquables d'au moins 44 x 44 px dans la navigation et la pagination */
+nav a, .pagination a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    min-width: 44px;
+}
 
 input, textarea, select {
     width: 100%;
     padding: 10px;
-    border: 1px solid #D2D2D7;
+    border: 1px solid var(--bordure-champ);
     border-radius: 10px;
     font-size: 16px;
 }
@@ -61,10 +116,79 @@ pre {
     overflow-x: auto;
 }
 
-footer { text-align: center; color: var(--gris); font-size: 14px; padding: 20px; }
+/* Messages : Django (accounts/messages.html) et messages écrits dans les pages */
+.message {
+    display: block;
+    padding: 12px 16px;
+    border-radius: 10px;
+    background: var(--fond);
+    color: var(--texte);
+    border: 1px solid var(--bordure);
+}
+
+.message.success { background: #E8F5EC; color: var(--vert-fonce); border-color: #B7DFC3; }   /* environ 6:1 */
+.message.error { background: #FDECEE; color: var(--rouge-fonce); border-color: #F5B8BF; }    /* environ 7,4:1 */
+
+/* Badge d'état d'une vidéo (youtube_uploader/badge_etat.html) : texte d'au moins 4,5:1 sur son fond */
+.badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.badge-en_attente { background: #EDEDF0; color: #3A3A3E; }
+.badge-en_cours { background: #E6F0FA; color: #004C99; }
+.badge-reussi { background: #E8F5EC; color: var(--vert-fonce); }
+.badge-echoue { background: #FDECEE; color: var(--rouge-fonce); }
+
+/* Tableau large : il défile dans son cadre au lieu d'élargir la page sur téléphone */
+.tableau-defilant { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.tableau-defilant table { min-width: 560px; }
+
+.pagination { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
+
+/* Texte lu par les lecteurs d'écran, invisible à l'écran */
+.visuellement-cachee {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* Pied de page : 16 px, liens en liste, chacun dans une zone de 44 px */
+footer { text-align: center; color: var(--gris); font-size: 16px; padding: 24px 16px; }
+
+footer .liens-pied {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0 16px;
+    margin: 8px 0 16px;
+    padding: 0;
+    list-style: none;
+}
+
+footer .liens-pied li { margin: 0; padding: 0; }
+
+footer .liens-pied a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+}
+
+[hidden] { display: none !important; }
 
 @media (max-width: 600px) {
     main { margin: 0; border-radius: 0; }
 }
+
 /* Piège à robots du formulaire Contact : invisible pour les personnes */
 .piege { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }

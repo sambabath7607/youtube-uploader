@@ -13,7 +13,7 @@
     <h2>Démarrer ({{ etapes_faites }} / {{ nb_etapes }})</h2>
     <ul>
     {% for libelle, fait, lien in etapes %}
-        <li>{% if fait %}✅ {{ libelle }}{% else %}⬜ <a href="{% if lien == '#chaine' %}#chaine{% else %}{% url lien %}{% endif %}">{{ libelle }}</a>{% endif %}</li>
+        <li>{% if fait %}<span aria-hidden="true">✅</span><span class="visuellement-cachee">fait :</span> {{ libelle }}{% else %}<span aria-hidden="true">⬜</span><span class="visuellement-cachee">à faire :</span> <a href="{% if lien == '#chaine' %}#chaine{% else %}{% url lien %}{% endif %}">{{ libelle }}</a>{% endif %}</li>
     {% endfor %}
     </ul>
 </article>
@@ -28,10 +28,10 @@
     {% endif %}
     <form method="post" action="{% url 'deconnecter_youtube' %}" id="form-deconnecter">
         {% csrf_token %}
-        <button type="submit">Déconnecter ma chaîne YouTube</button>
+        <button type="submit" class="secondary">Déconnecter ma chaîne YouTube</button>
     </form>
 {% else %}
-    <a href="{% url 'connecter_youtube' %}">Connecter ma chaîne YouTube</a>
+    <a href="{% url 'connecter_youtube' %}" role="button">Connecter ma chaîne YouTube</a>
 {% endif %}
 
 {% if user.youtubecredentials %}
@@ -39,7 +39,7 @@
 <p>L'agent IA écrit le script ; nos serveurs fabriquent la vidéo avec ta voix et la publient sur ta chaîne.
     Rien à installer : ça marche aussi depuis ton téléphone.</p>
 <p>
-    <a role="button" href="{% url 'guide_claude' %}#creer-une-video">🎬 Créer une vidéo avec mon agent IA</a>
+    <a role="button" href="{% url 'guide_claude' %}#creer-une-video"><span aria-hidden="true">🎬</span> Créer une vidéo avec mon agent IA</a>
     <a role="button" class="secondary" href="{% url 'modeles_video' %}">Voir les modèles</a>
 </p>
 <p><small>Première fois ? Ajoute d'abord le connecteur Batch Code IA :
@@ -48,11 +48,11 @@
 {% endif %}
 <h2>Ma voix pour les vidéos</h2>
 {% if user.voix.extrait %}
-    <p>Voix enregistrée ✅ — {{ user.voix.get_mode_display }}</p>
+    <p>Voix enregistrée <span aria-hidden="true">✅</span><span class="visuellement-cachee">(fait)</span> — {{ user.voix.get_mode_display }}</p>
 {% else %}
     <p>Pas encore de voix enregistrée : tes vidéos peuvent être lues avec ta propre voix.</p>
 {% endif %}
-<a href="{% url 'ma_voix' %}">🎙️ Gérer ma voix</a>
+<a href="{% url 'ma_voix' %}"><span aria-hidden="true">🎙️</span> Gérer ma voix</a>
 
 <h2>Mes outils</h2>
 <ul>
@@ -61,7 +61,7 @@
     <li><a href="{% url 'mes_preferences' %}">Mes préférences de publication</a></li>
     <li><a href="{% url 'ma_cle' %}">Mes clés d'API</a></li>
     <li><a href="{% url 'modeles_video' %}">Modèles de vidéos</a></li>
-    <li><a href="{% url 'guide_claude' %}">🤖 Utiliser avec ton agent IA</a></li>
+    <li><a href="{% url 'guide_claude' %}"><span aria-hidden="true">🤖</span> Utiliser avec ton agent IA</a></li>
     <li><a href="{% url 'guide_api' %}">Guide de l'API</a></li>
 </ul>
 
@@ -74,7 +74,7 @@
 
 <form method="post" action="{% url 'logout' %}">
     {% csrf_token %}
-    <button type="submit">Se déconnecter</button>
+    <button type="submit" class="secondary">Se déconnecter</button>
 </form>
 
 <script>
