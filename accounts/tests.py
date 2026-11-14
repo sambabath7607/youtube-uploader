@@ -148,7 +148,7 @@ class GuideClaudeTests(TestCase):
     def test_prompt_general_et_outils(self):
         reponse = self.client.get(reverse("guide_claude"))
         self.assertEqual(reponse.status_code, 200)
-        for mot in ["fabriquer_voix", "preparer_envoi", "etat_video", "x-api-key", "Copier le prompt"]:
+        for mot in ["fabriquer_voix", "fabriquer_video", "etat_video", "x-api-key", "Copier le prompt"]:
             self.assertContains(reponse, mot)
 
 
@@ -158,15 +158,15 @@ class BoutonClaudeTests(TestCase):
         self.client.login(username="samba", password="motdepasse123")
 
     def test_bouton_absent_sans_chaine_youtube(self):
-        self.assertNotContains(self.client.get(reverse("accueil")), "Créer une vidéo avec Claude Code")
+        self.assertNotContains(self.client.get(reverse("accueil")), "Créer une vidéo avec mon agent IA")
 
     def test_bouton_avec_chaine_youtube(self):
         YouTubeCredentials.objects.create(user=self.user, token_json="{}")
         reponse = self.client.get(reverse("accueil"))
-        self.assertContains(reponse, "Créer une vidéo avec Claude Code")
+        self.assertContains(reponse, "Créer une vidéo avec mon agent IA")
         self.assertContains(reponse, reverse("guide_claude") + "#creer-une-video")
         self.assertNotContains(reponse, "claude.ai/new")
-        self.assertContains(reponse, reverse("guide_claude") + "#autres-agents")
+        self.assertContains(reponse, reverse("modeles_video"))
 
 
 class ConnexionEnUnClicTests(TestCase):
@@ -288,5 +288,5 @@ class AccueilTests(TestCase):
 class AgentsIATests(TestCase):
     def test_tableau_des_capacites_des_agents(self):
         reponse = self.client.get(reverse("guide_claude"))
-        for mot in ["Ce que chaque agent peut faire", "Fabriquer une vidéo (Remotion)", "ChatGPT", "Cursor", "Gemini CLI"]:
+        for mot in ["Ce que chaque agent peut faire", "Fabriquer et publier une vidéo", "ChatGPT", "Cursor", "Gemini CLI"]:
             self.assertContains(reponse, mot)
