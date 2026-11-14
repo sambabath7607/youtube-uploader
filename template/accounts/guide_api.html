@@ -42,7 +42,8 @@ le montage sont faits sur nos serveurs, puis la vidéo part sur ta chaîne.</p>
 <p>Réponse 202 avec un numéro de vidéo et « etat » : « fabrication ». Suis-la comme un envoi (étape suivante) : le champ
 « etape » dit où en est la fabrication (voix, rendu 7/12, assemblage), puis l'envoi YouTube démarre tout seul.
 Erreurs propres à la fabrication : 400 <code>video_trop_longue</code>, 400 <code>voix_absente</code>, 409
-<code>fabrication_en_cours</code> (une à la fois), 429 <code>quota_voix_atteint</code>, 503 <code>service_video_indisponible</code>.</p>
+<code>fabrication_en_cours</code> (une à la fois), 429 <code>quota_voix_atteint</code>, 429 <code>quota_video_atteint</code> ou <code>duree_max_atteinte</code> (limites de l'offre),
+503 <code>service_video_indisponible</code>, 503 <code>capacite_service_atteinte</code> (capacité du mois du service atteinte : réessaie plus tard).</p>
 
 <h2>4. Suivre l'état de l'envoi</h2>
 <pre>curl.exe https://api.batchcodeia.com/youtube/api/v1/videos/NUMERO/ -H "Authorization: Token TA_CLE"</pre>
@@ -62,8 +63,11 @@ Cette route sert aux scripts des développeurs ; les agents IA utilisent la fabr
 <ul>
     <li>Formats acceptés : mp4, mov, webm.</li>
     <li>Taille maximale : 500 Mo.</li>
-    <li>5 envois par jour et par compte (une fabrication échouée ne compte pas).</li>
-    <li>Une vidéo en fabrication à la fois ; durée maximale selon le modèle (10 minutes, 60 secondes pour un Short).</li>
+    <li>Offre {{ limites.nom }} : {{ limites.envois_par_jour }} envois par jour et par compte (une fabrication échouée ne compte pas),
+        {{ limites.minutes_voix_par_mois }} minutes de voix et {{ limites.minutes_video_par_mois }} minutes de vidéo par mois
+        (<a href="{% url 'tarifs' %}">voir les offres</a>).</li>
+    <li>Une vidéo en fabrication à la fois ; durée maximale : {{ limites.minutes_max_par_video }} min avec ton offre,
+        et selon le modèle (60 secondes pour un Short).</li>
     <li>60 requêtes par minute.</li>
     <li>YouTube a aussi sa propre limite d'envois par jour.</li>
 </ul>
@@ -77,7 +81,7 @@ Cette route sert aux scripts des développeurs ; les agents IA utilisent la fabr
     <li><strong>405</strong> : mauvaise méthode, GET au lieu de POST par exemple.</li>
     <li><strong>409</strong> : vidéo déjà en cours (même titre) ou déjà en fabrication.</li>
     <li><strong>429</strong> : trop de requêtes, limite d'envois du jour atteinte (la tienne ou celle du service), ou quota de voix atteint.</li>
-    <li><strong>503</strong> : service de fabrication momentanément indisponible.</li>
+    <li><strong>503</strong> : service de fabrication momentanément indisponible, ou capacité du mois atteinte.</li>
 </ul>
 
 <h2>Tes données</h2>

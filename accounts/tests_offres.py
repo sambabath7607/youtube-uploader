@@ -221,3 +221,31 @@ class PagesOffresTests(TestCase):
         page = self.client.get(reverse("admin:accounts_coutclient_changelist"))
         self.assertEqual(page.status_code, 200)
         self.assertContains(page, "1.00")   # 2 min de voix × 0,50 $
+
+
+class LimitesAfficheesTests(TestCase):
+    """Les guides et la présentation affichent les limites réelles (settings.OFFRES), jamais des chiffres en dur."""
+
+    REGLAGE = {
+        "gratuit": dict(settings.OFFRES["gratuit"], envois_par_jour=2, minutes_voix_par_mois=3),
+        "pro": dict(settings.OFFRES["pro"], envois_par_jour=7, minutes_voix_par_mois=45),
+    }
+
+    def test_visiteur_voit_l_offre_gratuite(self):
+        with self.settings(OFFRES=self.REGLAGE):
+            guide = self.client.get(reverse("guide_claude")).content.decode()
+            api = self.client.get(reverse("guide_api")).content.decode()
+            accueil = self.client.get(reverse("accueil")).content.decode()
+        self.assertIn("2 envois par jour, 3 minutes de voix", guide)
+        self.assertNotIn("5 envois par jour", guide)
+        self.assertIn("2 envois par jour et par compte", api)
+        self.assertIn("3 minutes offertes par mois", accueil)
+        self.assertIn("45 avec l'offre Pro", accueil)
+
+    def test_client_pro_voit_ses_limites(self):
+        user = User.objects.create_user("ana", "ana@exemple.com", "x")
+        rendre_pro(user)
+        self.client.force_login(user)
+        with self.settings(OFFRES=self.REGLAGE):
+            guide = self.client.get(reverse("guide_claude")).content.decode()
+        self.assertIn("Limites (offre Pro) : 7 envois par jour, 45 minutes de voix", guide)

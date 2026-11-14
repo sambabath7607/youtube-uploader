@@ -10,6 +10,7 @@ from rest_framework.throttling import UserRateThrottle
 from accounts.authentification import AUTHENTIFICATIONS
 from accounts.offres import limites, probleme_fabrication, resume as resume_offre
 from .envois import envoi_en_double, envois_du_jour, probleme_avant_envoi
+from .exploitation import probleme_budget
 from .fabrication import (MODELES, MUSIQUES, TYPES_SCENE, donnees_pour_modal, duree_estimee, duree_max,
                           lancer_fabrication, nouvelle_cle)
 from .models import Video, VoixUtilisateur, YouTubeCredentials
@@ -117,6 +118,9 @@ def api_voix(request):
     voix, secondes, restant, probleme = verifier_voix(request.user, texte)
     if probleme:
         return probleme
+    budget = probleme_budget(secondes_voix=secondes)   # plafond de dépense Modal du mois (lot 5)
+    if budget:
+        return erreur(budget[0], budget[1], status.HTTP_503_SERVICE_UNAVAILABLE)
     try:
         with voix.extrait.open("rb") as f:
             id_appel = lancer_lecture(texte, f.read(), voix.passage_debut)
@@ -263,6 +267,9 @@ def api_fabrications(request):
         voix, secondes, _, probleme = verifier_voix(request.user, d["script"])
         if probleme:
             return probleme
+    budget = probleme_budget(secondes_voix=secondes, secondes_video=round(duree))   # plafond Modal du mois (lot 5)
+    if budget:
+        return erreur(budget[0], budget[1], status.HTTP_503_SERVICE_UNAVAILABLE)
     video = Video.objects.create(
         user=request.user, titre=d["titre"], description=d["description"], fichier="", pour_enfants=d["pour_enfants"],
         contenu_ia=d["contenu_ia"], visibilite=d["visibilite"], etat="fabrication", etape="Préparation",

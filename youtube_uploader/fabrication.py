@@ -127,6 +127,12 @@ def echec(video, message):
     video.etat, video.erreur, video.etape = "fabrication_echouee", message, ""
     video.save(update_fields=["etat", "erreur", "etape", "donnees_modele"])
     logger.warning("Fabrication échouée (vidéo %s) : %s", video.id, message)
+    if message == MESSAGE_DELAI:
+        # les autres échecs sont déjà signalés à Samba par le journal (niveau ERROR, avec la trace)
+        from .exploitation import alerter
+        alerter("fabrication_delai", "Fabrication arrêtée : délai dépassé",
+                f"La vidéo n° {video.id} n'était pas finie après {getattr(settings, 'RENDU_DELAI_MAX_SECONDES', 1800) // 60} "
+                "min : arrêtée chez Modal, quota de voix rendu au client. Vérifier le tableau de bord Modal.")
 
 
 def texte_etape(progression):

@@ -744,3 +744,149 @@ Reste pour Samba : `modal deploy` + essai B2, mesures F4 / T4, mise en ligne (co
   `COUT_MODAL_MINUTE_VIDEO` à saisir dans .env).
 - Migration : accounts 0006 (pas encore appliquée : `python manage.py migrate` à lancer par Samba).
 - Reste pour Samba : O5 (`PONT_SECRET` identique dans les deux .env), D1 (chiffres), B4 (essai Stripe en mode test).
+
+## Lot 5 — Exploitation (14 novembre 2026, sur le PC)
+- E1 page de santé `/sante/` (publique, JSON, sans donnée personnelle) : base lisible, worker vivant (battement
+  de moins de 2 min, écrit en base par le worker toutes les 30 s, même pendant un long envoi YouTube), Modal
+  joignable (vérifié par le worker toutes les 10 min par une simple recherche des fonctions : gratuit, aucune
+  machine démarrée ; la page elle-même n'appelle jamais Modal). 200 si tout va bien, 503 sinon.
+- E3 alertes par courriel à `ADMINS` (`ADMINS_EMAIL`, sinon `SUPPORT_EMAIL`), une fois par heure au plus pour la même
+  alerte : erreur 500 du site, toute erreur du worker (fabrication échouée, récupération impossible, Modal en panne),
+  fabrication arrêtée par le délai, envois bloqués (limite du service), quota YouTube du projet (`quotaExceeded`),
+  panne de YouTube (5xx), envoi coupé par un redémarrage, budget Modal atteint, sauvegarde ratée.
+  Jamais pour une cause du client (autorisation retirée, limite de sa chaîne, vidéo refusée).
+- Journaux sans secret : filtre `youtube_uploader/journaux.py` sur la console et les courriels (message ET trace) :
+  valeurs du .env, « Token … », « Bearer … », X-API-Key, jetons Google, mots de passe, `?code=`, liens de dépôt et
+  de « nouveau mot de passe » masqués (`***`). Le courriel d'erreur de Django (non limité, avec la requête) est
+  remplacé par le nôtre.
+- E4 sauvegardes : la copie quotidienne existante (14 gardées, `~/sauvegardes_youtube`) est maintenant **vérifiée**
+  à chaque fois (intégrité SQLite, tables et colonnes de chaque modèle, migrations) → alerte si elle ne se
+  restaure pas. Copie **chiffrée** hors du serveur (volume Modal privé `batchcodeia-sauvegardes`, 14 gardées) si
+  `SAUVEGARDE_HORS_SERVEUR=modal` et `SAUVEGARDE_CLE` (lieu à confirmer par Samba ; stockage Modal : **prix à
+  vérifier** sur modal.com/pricing). Commandes : `sauvegarder`, `verifier_sauvegarde [fichier]`,
+  `restaurer_sauvegarde --liste` / `NOM --vers FICHIER` (n'écrase jamais un fichier existant).
+- Plafond de dépense Modal (L3, côté code) : `BUDGET_MODAL_MENSUEL` (50 $ provisoire, **à décider par Samba** ;
+  0 = pas de plafond), dépense estimée du mois = minutes de voix et de vidéo × `COUT_MODAL_MINUTE_VOIX` /
+  `COUT_MODAL_MINUTE_VIDEO`. Au-delà : fabrication et voix refusées (503 `capacite_service_atteinte`, rien lancé
+  chez Modal, quota intact) et alerte à Samba. Sans tarifs dans .env, le plafond ne bloque rien.
+- X1 : la cause du fichier vide `file` est trouvée et corrigée (la sauvegarde, pendant les tests, ouvrait
+  « file:memorydb… » comme un fichier). Le fichier `file` lui-même n'est pas supprimé (suppression : accord de Samba).
+- Migration : youtube_uploader 0010 (`EtatExploitation`, pas encore appliquée).
+
+## Lot 6 — Bout en bout (14 novembre 2026, sur le PC)
+- B1 / B3 simulés (`youtube_uploader/tests_bout_en_bout.py`) : le vrai connecteur MCP appelle la vraie API du
+  site : inscription → clé (« Mes clés ») → chaîne → voix → `mon_compte` → `fabriquer_video` → Modal simulé → worker
+  (étape « Rendu 3/5 ») → vidéo récupérée, effacée chez Modal → envoi YouTube simulé (contenu IA déclaré) →
+  courriel avec le lien youtu.be → `etat_video` « reussi » → fichier effacé du serveur → /sante/ « ok ».
+- B4 côté service : pont signé → Pro tout de suite (limites Pro, vidéo de 2 min acceptée) → annulation → Gratuit
+  (vidéo de 2 min refusée) ; paiement avant inscription → compte créé + lien « Choisis ton mot de passe ».
+- B5 simulé : chaîne déconnectée, Modal en panne (503, rien décompté, Samba prévenu), quota de voix atteint,
+  fabrication échouée (quota rendu, jamais relancée).
+- Guides : plus aucun chiffre écrit en dur (« 5 envois par jour, 10 minutes de voix ») : `guide_claude.html`,
+  `guide_api.html`, la présentation et le connecteur affichent les limites réelles (`limites_affichees(user)` dans
+  `accounts/offres.py`, tirées de `settings.OFFRES` ou de l'offre du compte). `CLAUDE.md` (section API) dit encore
+  « 5 envois par jour » : à corriger par Samba (Claude ne modifie pas CLAUDE.md sans son accord).
+- Tests : 266 OK (9 sautés sans le paquet mcp), dont 46 nouveaux (`tests_exploitation.py` 36, `tests_bout_en_bout.py` 8,
+  `tests_offres.py` +2) ; `manage.py check` et `makemigrations --check` sans erreur. Modal, Google et le vitrine simulés.
+
+## Mise en ligne — commandes pour Samba
+Tout est regroupé ici, dans l'ordre, **une commande par ligne**. Aucune valeur secrète n'est écrite : tu les crées
+toi-même et tu les gardes aussi dans ton gestionnaire de mots de passe (`TOKEN_ENCRYPTION_KEY`, `PONT_SECRET`,
+`SAUVEGARDE_CLE`). Prix à vérifier avant : Modal (modal.com/pricing), Brevo (brevo.com), surveillance (uptimerobot.com).
+
+### 1. Sur ton PC — Modal (dans `C:\Users\samba\Nouveau dossier\src`)
+```
+..\.venv\Scripts\modal.exe --version
+..\.venv\Scripts\python.exe -m pip install modal==1.6.3
+..\.venv\Scripts\modal.exe token new
+..\.venv\Scripts\modal.exe deploy voix_modal/service.py
+..\.venv\Scripts\modal.exe deploy fabrication_modal/service.py
+..\.venv\Scripts\modal.exe run fabrication_modal/service.py
+```
+- 2e ligne seulement si la 1re ne répond pas ; 3e seulement si ce PC n'est pas encore connecté à Modal.
+- La dernière ligne est l'essai **B2** : 4 vidéos d'essai dans `essais_rendu\` et le temps de chaque étape (à noter ici).
+- Fixer aussi le plafond de dépenses et l'alerte dans le tableau de bord Modal (L3).
+
+### 2. Sur ton PC — secrets à créer (affichés une fois, à copier dans les .env et le gestionnaire de mots de passe)
+```
+..\.venv\Scripts\python.exe -c "import secrets; print(secrets.token_hex(32))"
+..\.venv\Scripts\python.exe -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+```
+- 1re ligne → `PONT_SECRET` (la **même** valeur dans les deux .env). 2e ligne → `SAUVEGARDE_CLE`.
+
+### 3. Valeurs à mettre dans les .env du serveur (avec `nano .env`, sans les montrer à personne)
+Service YouTube Uploader (`~/youtube-uploader/.env`) :
+- `PONT_SECRET=` la valeur de l'étape 2 (identique au site vitrine)
+- `SUPPORT_EMAIL=support@batchcodeia.com` (quand la boîte existe, tâche P2) et `ADMINS_EMAIL=` ton adresse d'alertes
+- `EMAIL_HOST=` `EMAIL_PORT=587` `EMAIL_HOST_USER=` `EMAIL_HOST_PASSWORD=` `EMAIL_USE_TLS=True` `DEFAULT_FROM_EMAIL=` (compte SMTP Brevo, tâche A3)
+- `COUT_MODAL_MINUTE_VOIX=` et `COUT_MODAL_MINUTE_VIDEO=` (tarifs mesurés en F4) puis `BUDGET_MODAL_MENSUEL=` (ton plafond en $)
+- `SAUVEGARDE_HORS_SERVEUR=modal` et `SAUVEGARDE_CLE=` la valeur de l'étape 2 (si tu choisis Modal comme lieu)
+- `MODAL_TOKEN_ID=` et `MODAL_TOKEN_SECRET=` (déjà en place pour la voix)
+
+Site vitrine (`~/batchcodeia/.env`) :
+- `PONT_SECRET=` la même valeur
+- `PONT_URL=https://api.batchcodeia.com/youtube/api/v1/interne/abonnements/`
+- `YOUTUBE_UPLOADER_URL=https://api.batchcodeia.com`
+
+### 4. Sur le serveur — service YouTube Uploader (après avoir fusionné `livraison-complete` dans `main`)
+```
+cd ~/youtube-uploader
+source .venv/bin/activate
+cp db.sqlite3 ~/db_youtube_avant-lots5-6_$(date +%F).sqlite3
+chmod 600 ~/db_youtube_avant-lots5-6_*.sqlite3
+git pull origin main
+pip install -r requirements.txt
+python manage.py check
+python manage.py migrate
+python manage.py collectstatic --noinput
+sudo systemctl restart youtube-uploader
+sudo systemctl restart youtube-worker
+sudo systemctl restart youtube-mcp
+curl -s https://api.batchcodeia.com/sante/
+python manage.py sendtestemail --admins
+python manage.py sauvegarder
+python manage.py verifier_sauvegarde
+python manage.py restaurer_sauvegarde --liste
+```
+- `curl` doit répondre `"etat": "ok"` (attendre 1 min après le redémarrage du worker ; `"modal": "inconnu"` les
+  10 premières minutes est normal).
+- `sendtestemail --admins` : courriel de test reçu dans ta boîte (pas en indésirables) = alertes prêtes (A3, E3).
+- `restaurer_sauvegarde --liste` : seulement si `SAUVEGARDE_HORS_SERVEUR=modal` ; la copie du jour doit apparaître.
+- Dans claude.ai : le connecteur propose 8 outils (`fabriquer_video`, `modeles_video`, sans `preparer_envoi`).
+
+### 5. Sur le serveur — site vitrine Batch Code IA
+```
+cd ~/batchcodeia
+source .venv/bin/activate
+git pull origin main
+python manage.py migrate
+python manage.py collectstatic --noinput
+sudo systemctl restart batchcodeia
+python manage.py rattrapage_youtube_uploader
+```
+- (adapter `source …` si l'environnement Python du vitrine porte un autre nom) ; migrations billing 0002 et catalog 0002.
+- La dernière ligne envoie l'état de tous les abonnements au service : elle doit finir sans erreur de signature.
+
+### 6. Surveillance externe (E2)
+- uptimerobot.com (offre gratuite, **prix à vérifier**) → moniteur HTTP(s) sur `https://api.batchcodeia.com/sante/`,
+  toutes les 5 min, alerte par courriel. Essai de panne : `sudo systemctl stop youtube-worker`, attendre l'alerte
+  (≈ 7 min), puis `sudo systemctl start youtube-worker`.
+
+### 7. Essai de restauration sur ton PC (E5)
+```
+scp TON_UTILISATEUR@TON_SERVEUR:~/sauvegardes_youtube/NOM_DE_LA_COPIE.sqlite3 essai_restauration.sqlite3
+..\.venv\Scripts\python.exe manage.py verifier_sauvegarde essai_restauration.sqlite3
+```
+- Réponse attendue : « Copie restaurable … Migrations à jour : le site peut démarrer sur cette copie. »
+- Copie hors du serveur (si choisie) : `..\.venv\Scripts\python.exe manage.py restaurer_sauvegarde NOM --vers essai_modal.sqlite3`
+  (avec `SAUVEGARDE_CLE` dans le .env du PC). Effacer ensuite les deux fichiers d'essai.
+
+### 8. Essais réels à noter dans ce journal
+- **B2** : `modal run` de l'étape 1 (4 modèles, temps par étape).
+- **F4 / T4** : suivre la « Procédure de mesure du rendu réel » (section des lots 1 et 2) : vidéos de 30 s, 2 min,
+  6 min ; puis sur le serveur `sudo journalctl -u youtube-worker --since "10 min ago" | grep "récupérée chez Modal"`
+  (au-delà de 30 s pour 50 Mo : revoir la décision D8) ; coût par minute dans le tableau de bord Modal → `COUT_MODAL_*`.
+- **B4** : Stripe en mode test sur le vitrine → achat du plan « Créateur » → « Mon compte » du service affiche Pro en
+  moins d'1 min → annulation dans « Mes abonnements » → retour à Gratuit (fin de période ou tout de suite).
+- **B3** : sur téléphone, claude.ai : « Fais une vidéo de 1 min sur les listes Python avec ma voix » → lien youtu.be ;
+  chronomètre noté ici.

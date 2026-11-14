@@ -22,7 +22,9 @@ journal = logging.getLogger(__name__)
 def accueil(request):
     # Visiteur : page publique de présentation (Google exige une page d'accueil qui décrit le service)
     if not request.user.is_authenticated:
-        return render(request, "accounts/presentation.html")
+        from .offres import limites_affichees
+        return render(request, "accounts/presentation.html", {"limites": limites_affichees(),
+                                                               "pro": settings.OFFRES["pro"]})
     from youtube_uploader.models import Video, VoixUtilisateur, YouTubeCredentials
     voix = VoixUtilisateur.objects.filter(user=request.user).first()
     etapes = [
@@ -154,11 +156,13 @@ def tarifs(request):
     })
 
 def guide_api(request):
-    return render(request, "accounts/guide_api.html")
+    from .offres import limites_affichees
+    return render(request, "accounts/guide_api.html", {"limites": limites_affichees(request.user)})
 
 
 def guide_claude(request):
-    return render(request, "accounts/guide_claude.html")
+    from .offres import limites_affichees
+    return render(request, "accounts/guide_claude.html", {"limites": limites_affichees(request.user)})
 
 
 # ---------- Connexion, mot de passe oublié, « Mon compte » ----------

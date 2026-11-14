@@ -228,10 +228,43 @@ if not DEBUG:
     SECURE_CONTENT_TYPE_NOSNIFF = True
     SECURE_REFERRER_POLICY = "same-origin"
 
-# Journal : les erreurs du site s'affichent dans la console (sur le serveur : sudo journalctl -u youtube-uploader)
+# --- Exploitation (lot 5 : page de santé, alertes par courriel, journaux sans secret, sauvegardes, plafond Modal) ---
+# Alertes (erreur du service, envoi bloqué, quota YouTube, budget Modal, sauvegarde) : courriel à ADMINS.
+# ADMINS_EMAIL dans .env ; sinon l'adresse de support. Expéditeur : le même que les autres courriels (SMTP vérifié).
+ADMINS = [("Samba", os.environ.get("ADMINS_EMAIL") or SUPPORT_EMAIL)]
+SERVER_EMAIL = DEFAULT_FROM_EMAIL
+EMAIL_SUBJECT_PREFIX = "[YouTube Uploader] "
+ALERTES_INTERVALLE_SECONDES = 60 * 60       # une même alerte au plus une fois par heure (pas de rafale de courriels)
+# /sante/ : le worker est « arrêté » si son dernier battement a plus de 2 min ; Modal vérifié par le worker (gratuit)
+SANTE_BATTEMENT_MAX_SECONDES = 120
+SANTE_MODAL_INTERVALLE_SECONDES = 10 * 60
+# ⚠️ PLAFOND DE DÉPENSE MODAL — À DÉCIDER PAR SAMBA (tâche L3) : budget du mois en $, estimé avec
+# COUT_MODAL_MINUTE_VOIX et COUT_MODAL_MINUTE_VIDEO. Au-delà, les nouvelles fabrications et voix sont refusées
+# et Samba reçoit une alerte. 0 = pas de plafond. Garder aussi la limite du tableau de bord Modal (L3).
+BUDGET_MODAL_MENSUEL = float(os.environ.get("BUDGET_MODAL_MENSUEL", "50") or 0)
+# Sauvegardes : copie quotidienne vérifiée sur le serveur (14 gardées) ; copie chiffrée hors du serveur si
+# SAUVEGARDE_HORS_SERVEUR=modal (volume Modal privé) et SAUVEGARDE_CLE (clé Fernet, dans .env seulement).
+DOSSIER_SAUVEGARDES = os.environ.get("DOSSIER_SAUVEGARDES") or str(Path.home() / "sauvegardes_youtube")
+SAUVEGARDE_HORS_SERVEUR = os.environ.get("SAUVEGARDE_HORS_SERVEUR", "")
+SAUVEGARDE_VOLUME_MODAL = "batchcodeia-sauvegardes"
+
+# Journal : les erreurs du site s'affichent dans la console (sur le serveur : sudo journalctl -u youtube-uploader),
+# toujours sans secret (clés, jetons, mots de passe, liens secrets masqués) ; une erreur du service → courriel à ADMINS.
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
-    "handlers": {"console": {"class": "logging.StreamHandler"}},
+    "filters": {"sans_secret": {"()": "youtube_uploader.journaux.FiltreSecrets"}},
+    "handlers": {
+        "console": {"class": "logging.StreamHandler", "filters": ["sans_secret"]},
+        "alerte_admins": {"class": "youtube_uploader.journaux.AlerteAdmins", "level": "ERROR",
+                          "filters": ["sans_secret"]},
+    },
     "root": {"handlers": ["console"], "level": "WARNING"},
+    "loggers": {
+        # remplace le courriel d'erreur de Django (non limité) par le nôtre (une fois par heure, sans secret)
+        "django": {"handlers": ["alerte_admins"], "level": "WARNING"},
+        "youtube_uploader": {"handlers": ["alerte_admins"]},
+        "accounts": {"handlers": ["alerte_admins"]},
+    },
 }
+# --- fin du bloc « Exploitation » ---

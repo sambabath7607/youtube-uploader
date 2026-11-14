@@ -26,6 +26,11 @@ def probleme_avant_envoi(user):
                 "limite_envois_atteinte")
     if du_jour.count() >= limite_service_par_jour():
         # Quota YouTube partagé par tout le service : on s'arrête avant d'atteindre la limite de Google
+        from .exploitation import alerter
+        alerter("limite_service", "Envois bloqués : limite du service atteinte",
+                f"{du_jour.count()} envois aujourd'hui pour tout le service (ENVOIS_SERVICE_PAR_JOUR = "
+                f"{limite_service_par_jour()}). Les nouveaux envois sont refusés jusqu'à demain (heure UTC). "
+                "Si cela devient fréquent : demander l'augmentation du quota YouTube (tâche G5).")
         return ("Le service a atteint sa limite d'envois YouTube pour aujourd'hui. Réessaie demain.",
                 "limite_service_atteinte")
     return None
@@ -76,6 +81,7 @@ def envoyer(video):
     except Exception as e:
         video.etat = "echoue"
         video.erreur = message_erreur(e)
+        alerter_si_cause_service(e, video)
         if isinstance(e, RefreshError):
             # Autorisation retirée chez Google ou expirée : on efface le jeton et les données YouTube (règle de révocation)
             effacer_donnees_youtube(video.user)
@@ -88,6 +94,31 @@ def envoyer(video):
         prevenir(video.user, f"Ta vidéo « {video.titre} » est sur YouTube",
                  f"Ta vidéo est en ligne : https://youtu.be/{video.youtube_id}\n"
                  f"Visibilité : {video.get_visibilite_display()}. Tu peux la modifier dans YouTube Studio.")
+
+
+def alerter_si_cause_service(e, video):
+    """Échec d'envoi : alerte à Samba seulement si le service est en cause (quota YouTube du projet, panne de
+    Google, erreur inattendue) ; jamais pour une cause du client (autorisation retirée, limite de sa chaîne)."""
+    from google.auth.exceptions import RefreshError
+    from googleapiclient.errors import HttpError
+
+    from .chiffrement import JetonIllisible
+    from .exploitation import alerter
+
+    if "(quotaExceeded)" in video.erreur:
+        alerter("quota_youtube", "Quota YouTube du service atteint",
+                "YouTube a répondu quotaExceeded : plus aucun envoi possible aujourd'hui pour tout le service. "
+                "Les clients sont prévenus ; rien n'est relancé. Penser à la demande d'augmentation (tâche G5).")
+        return
+    if isinstance(e, (RefreshError, JetonIllisible)) or "(uploadLimitExceeded)" in video.erreur:
+        return   # cause du client (ou de sa chaîne) : il est prévenu, Samba n'a rien à faire
+    if not isinstance(e, HttpError):
+        return   # erreur inattendue : déjà signalée à Samba par le journal (message_erreur, niveau ERROR)
+    if 400 <= e.resp.status < 500 and e.resp.status != 403:
+        return   # vidéo refusée par YouTube (fichier, titre…) : le message est donné au client
+    alerter(f"envoi_echoue:{e.resp.status}", "Envoi YouTube échoué (cause du service)",
+            f"Vidéo n° {video.id} : {video.erreur}\n"
+            "Le détail est dans : sudo journalctl -u youtube-worker")
 
 
 def prevenir(user, sujet, message):
@@ -130,9 +161,10 @@ def appliquer_regle_30_jours():
     return videos, chaines
 
 
-def sauvegarder_base(dossier=None):
+def sauvegarder_base(dossier=None, forcer=False):
     """Copie de la base SQLite (fiable même pendant l'utilisation), lisible seulement par le propriétaire ;
-    on garde les 14 dernières. Renvoie le chemin de la copie, ou None si la dernière a moins de 24 h."""
+    on garde les 14 dernières. Renvoie le chemin de la copie, ou None si la dernière a moins de 24 h
+    (forcer=True : copie tout de suite, commande « sauvegarder »)."""
     import os
     import sqlite3
     from pathlib import Path
@@ -142,14 +174,22 @@ def sauvegarder_base(dossier=None):
     dossier = Path(dossier or Path.home() / "sauvegardes_youtube")
     dossier.mkdir(mode=0o700, exist_ok=True)
     copies = sorted(dossier.glob("db_*.sqlite3"))
-    if copies and timezone.now().timestamp() - copies[-1].stat().st_mtime < 24 * 3600:
+    if not forcer and copies and timezone.now().timestamp() - copies[-1].stat().st_mtime < 24 * 3600:
         return None
-    cible = dossier / f"db_{timezone.now():%Y-%m-%d_%H%M}.sqlite3"
-    source = sqlite3.connect(settings.DATABASES["default"]["NAME"])
+    cible = dossier / f"db_{timezone.now():%Y-%m-%d_%H%M%S}.sqlite3"
+    nom = str(settings.DATABASES["default"]["NAME"])
     copie = sqlite3.connect(cible)
-    with copie:
-        source.backup(copie)
-    source.close()
+    if nom.startswith("file:"):
+        # Base en mémoire des tests : copiée par la connexion de Django (avant, sqlite3.connect(NAME) créait
+        # pendant les tests un fichier vide nommé « file » à la racine : tâche X1)
+        from django.db import connection
+        connection.ensure_connection()
+        copie.executescript("\n".join(connection.connection.iterdump()))
+    else:
+        source = sqlite3.connect(nom)
+        with copie:
+            source.backup(copie)
+        source.close()
     copie.close()
     os.chmod(cible, 0o600)
     for ancienne in sorted(dossier.glob("db_*.sqlite3"))[:-NB_SAUVEGARDES]:
@@ -162,7 +202,8 @@ def taches_periodiques():
     try:
         abandonnes = nettoyer_envois_abandonnes()
         videos, chaines = appliquer_regle_30_jours()
-        sauvegarde = sauvegarder_base()
+        from .exploitation import sauvegarde_quotidienne
+        sauvegarde = sauvegarde_quotidienne()   # copie du jour vérifiée (et copiée hors du serveur si configuré)
         if abandonnes or videos or chaines or sauvegarde:
             logger.warning("Tâches automatiques : %s envoi(s) abandonné(s), %s lien(s) et %s chaîne(s) effacés, "
                            "sauvegarde : %s", abandonnes, videos, chaines, sauvegarde)
@@ -179,3 +220,7 @@ def marquer_envois_interrompus():
         video.fichier.delete(save=False)
         video.save()
         logger.warning("Envoi interrompu marqué en échec (vidéo %s)", video.id)
+        from .exploitation import alerter
+        alerter("envoi_interrompu", "Envoi interrompu par un redémarrage",
+                f"La vidéo n° {video.id} était en cours d'envoi quand le worker s'est arrêté : elle est marquée en "
+                "échec (pas de renvoi automatique). Le client doit la renvoyer.")

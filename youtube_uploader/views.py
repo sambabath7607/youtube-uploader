@@ -6,6 +6,7 @@ from django.contrib.auth.decorators import login_required
 from django.http import FileResponse, Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.views.decorators.cache import never_cache
 
 from accounts.offres import quota_voix_secondes
 
@@ -182,3 +183,13 @@ def modeles_video(request):
     return render(request, "youtube_uploader/modeles.html", {
         "modeles": catalogue["modeles"], "types": TYPES_SCENE.items(), "musiques": catalogue["musiques"].items(),
     })
+
+
+@never_cache
+def sante(request):
+    """Page de santé (lot 5) pour la surveillance externe : base lisible, worker vivant, Modal joignable.
+    Publique et sans donnée personnelle ; 200 si tout va bien, 503 sinon (l'outil de surveillance alerte Samba).
+    Aucun appel à Modal ici : c'est le worker qui le vérifie (gratuit) et l'écrit avec son battement."""
+    from .exploitation import etat_sante
+    resultat, ok = etat_sante()
+    return JsonResponse(resultat, status=200 if ok else 503)

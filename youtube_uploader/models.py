@@ -90,3 +90,14 @@ class VoixUtilisateur(models.Model):
 
     def __str__(self):
         return f"Voix de {self.user} ({self.get_mode_display()})"
+
+
+class EtatExploitation(models.Model):
+    """Exploitation (lot 5) : petites valeurs partagées entre le site et le worker, sans donnée personnelle.
+    « worker » = battement du worker (et dernier contrôle de Modal) ; « alerte:… » = dernier courriel d'alerte envoyé."""
+    nom = models.CharField(max_length=100, unique=True)
+    valeur = models.JSONField(default=dict, blank=True)
+    maj_le = models.DateTimeField()
+
+    def __str__(self):
+        return self.nom

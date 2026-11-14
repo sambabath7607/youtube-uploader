@@ -51,7 +51,7 @@ Façon de travailler (RAPIDE) :
    Ne choisis jamais à ma place. Dis-moi aussi sur quelle chaîne la vidéo va partir.
 3. Dès que je valide, appelle fabriquer_video, puis etat_video toutes les 15 secondes : dis-moi l'étape
    (voix, rendu, envoi YouTube) et donne-moi le lien YouTube à la fin.
-4. Limites : 5 envois par jour, 10 minutes de voix par mois. En cas d'erreur (quota_voix_atteint, voix_absente,
+4. Limites (offre {{ limites.nom }}) : {{ limites.envois_par_jour }} envois par jour, {{ limites.minutes_voix_par_mois }} minutes de voix et {{ limites.minutes_video_par_mois }} minutes de vidéo par mois, {{ limites.minutes_max_par_video }} min par vidéo au plus. En cas d'erreur (quota_voix_atteint, voix_absente,
    limite_envois_atteinte…), arrête-toi et explique-moi simplement quoi faire.
 5. Réponds en français, avec des réponses courtes et un tableau récapitulatif à chaque étape.</pre>
 <button type="button" id="copier-prompt">Copier le prompt</button>

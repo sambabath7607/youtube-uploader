@@ -3,7 +3,8 @@
 Chaque utilisateur envoie SA clé d'API du site dans l'en-tête Authorization
 (« Token SA_CLE »). Le connecteur la transmet telle quelle à l'API Django :
 les vidéos partent donc sur la chaîne de cet utilisateur, et les limites
-de l'API (5 envois par jour, 60 requêtes par minute) s'appliquent à chacun.
+de son offre (envois par jour, minutes de voix et de vidéo : voir mon_compte) et 60 requêtes par minute
+s'appliquent à chacun.
 Les vidéos sont fabriquées sur nos serveurs (fabriquer_video) : l'agent IA n'a besoin d'aucun terminal,
 il marche aussi depuis claude.ai, ChatGPT ou un téléphone.
 
@@ -374,7 +375,8 @@ async def fabriquer_video(modele: str, script: str, scenes: list[dict], titre: s
        donne le lien https://youtu.be/<youtube_id>.
     Erreurs : donnees_invalides (lis "details" et corrige les champs), video_trop_longue (raccourcis le script),
     fabrication_en_cours (une seule vidéo à la fois), voix_absente / mode_voix (régler la voix sur le site),
-    quota_voix_atteint, limite_envois_atteinte, limite_service_atteinte (s'arrêter et prévenir l'utilisateur).
+    quota_voix_atteint, quota_video_atteint, duree_max_atteinte, limite_envois_atteinte, limite_service_atteinte,
+    capacite_service_atteinte, service_video_indisponible (s'arrêter et prévenir l'utilisateur, ne pas relancer).
     """
     cle, probleme = cle_ou_erreur()
     if probleme:

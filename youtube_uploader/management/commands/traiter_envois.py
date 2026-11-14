@@ -6,10 +6,19 @@ from django.core.management.base import BaseCommand
 from django.db import close_old_connections
 
 from youtube_uploader.envois import envoyer, marquer_envois_interrompus, prendre_prochaine_video, taches_periodiques
+from youtube_uploader.exploitation import battement
 from youtube_uploader.fabrication import suivre_fabrications
 
 INTERVALLE_TACHES = 3600         # nettoyage, règle des 30 jours et sauvegarde : vérifiés toutes les heures
 INTERVALLE_FABRICATIONS = 5      # vidéos en fabrication chez Modal : vérifiées toutes les 5 s
+
+
+def battre(verifier_modal=True):
+    """Battement pour la page /sante/ (lot 5) : une panne ici n'arrête jamais le worker."""
+    try:
+        battement(verifier_modal)
+    except Exception:
+        pass
 
 
 class Command(BaseCommand):
@@ -23,6 +32,7 @@ class Command(BaseCommand):
         """Fil séparé : une vidéo fabriquée est récupérée tout de suite, même pendant l'envoi YouTube d'une autre."""
         while not self.arreter:
             close_old_connections()
+            battre()   # ce fil tourne aussi pendant un long envoi YouTube : le battement continue
             suivre_fabrications()
             time.sleep(INTERVALLE_FABRICATIONS)
 
@@ -31,6 +41,7 @@ class Command(BaseCommand):
         # systemctl stop / restart : on termine la vidéo en cours avant de s'arrêter
         signal.signal(signal.SIGTERM, lambda *_: setattr(self, "arreter", True))
         marquer_envois_interrompus()
+        battre(verifier_modal=not options["une_fois"])
         if options["une_fois"]:
             suivre_fabrications()
         else:

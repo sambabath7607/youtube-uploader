@@ -139,3 +139,18 @@ def resume(user):
         "minutes_video_restantes": max(0, offre.secondes_video_par_mois - video_utilise) // 60,
         "minutes_max_par_video": offre.secondes_max_par_video // 60,
     }
+
+
+def limites_affichees(user=None):
+    """Chiffres à afficher dans les pages et les guides (jamais écrits en dur) : ceux du compte connecté,
+    sinon ceux de l'offre Gratuit (settings.OFFRES)."""
+    if user is not None and user.is_authenticated:
+        return resume(user)
+    gratuit = settings.OFFRES["gratuit"]
+    return {
+        "offre": "gratuit", "nom": gratuit["nom"],
+        "envois_par_jour": gratuit["envois_par_jour"],
+        "minutes_voix_par_mois": gratuit["minutes_voix_par_mois"],
+        "minutes_video_par_mois": gratuit["minutes_video_par_mois"],
+        "minutes_max_par_video": gratuit["minutes_max_par_video"],
+    }

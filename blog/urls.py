@@ -3,9 +3,12 @@ from django.urls import path, include
 
 from accounts import oauth_serveur, pont
 from accounts.views import connecter_ma_chaine
+from youtube_uploader.views import sante
 
 urlpatterns = [
     path("admin/", admin.site.urls),
+    # Page de santé (lot 5) : surveillée de l'extérieur toutes les 5 min (tâche E2)
+    path("sante/", sante, name="sante"),
     # « Connecter ma chaîne » passe d'abord par la liste d'attente (limite Google de 100 utilisateurs), placé avant
     # youtube_uploader.urls pour l'emporter sur /youtube/connecter/ ; {% url 'connecter_youtube' %} y mène toujours
     path("youtube/connecter/", connecter_ma_chaine),
