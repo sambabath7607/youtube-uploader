@@ -2,72 +2,101 @@
 {% block titre %}Conditions d'utilisation{% endblock %}
 
 {% block contenu %}
-<!-- BROUILLON : à compléter (parties entre crochets) et à faire relire par un professionnel avant la mise en ligne. -->
+<!-- BROUILLON (lot 3) : texte à valider par Samba ; parties entre crochets à compléter ; relecture par un professionnel conseillée avant la mise en ligne. -->
 <h1>Conditions d'utilisation</h1>
 <p>Dernière mise à jour : [date de mise en ligne]</p>
 
 <h2>1. Le service</h2>
 <p>
-    YouTube Uploader permet d'envoyer des vidéos sur ta propre chaîne YouTube, depuis le site ou par une API
-    (par exemple avec Claude Code), à l'aide d'une clé personnelle.
+    YouTube Uploader, édité par Batch Code IA, fabrique des vidéos à partir de tes demandes (par exemple à ton agent
+    IA : Claude, ChatGPT…) et les envoie sur ta propre chaîne YouTube. Tu peux aussi l'utiliser depuis le site
+    ou par une API, avec une clé personnelle.
 </p>
 
-<h2>2. Acceptation</h2>
+<h2>2. Version bêta</h2>
+<p>
+    Le service est en bêta : il peut changer, être interrompu ou présenter des erreurs. Tant que Google n'a pas
+    vérifié notre application, le nombre de chaînes connectées est limité ; au-delà, une liste d'attente est proposée.
+</p>
+
+<h2>3. Acceptation</h2>
 <p>
     En créant un compte, tu acceptes ces conditions et notre
     <a href="{% url 'confidentialite' %}">politique de confidentialité</a>. Tu dois avoir au moins 13 ans,
-    ou l'âge minimum exigé dans ton pays.
+    ou l'âge minimum exigé dans ton pays. Tu donnes une adresse courriel exacte, qui t'appartient.
 </p>
 
-<h2>3. YouTube</h2>
+<h2>4. YouTube</h2>
 <p>
     Ce service utilise les services d'API YouTube. En l'utilisant, tu acceptes d'être lié par les
     <a href="https://www.youtube.com/t/terms">Conditions d'utilisation de YouTube</a>.
     Ce service n'est ni édité ni approuvé par YouTube ou Google.
 </p>
 
-<h2>4. Tes responsabilités</h2>
+<h2>5. Tes responsabilités</h2>
 <ul>
-    <li>Tu es seul responsable des vidéos que tu envoies et de leurs informations (titre, description).</li>
+    <li>Tu es seul responsable des vidéos publiées sur ta chaîne et de leurs informations (titre, description),
+        même quand c'est ton agent IA qui les a écrites : relis-les avant de valider.</li>
     <li>Tu indiques toi-même, pour chaque vidéo, si elle est conçue pour les enfants. Cette déclaration engage ta responsabilité légale.</li>
     <li>Tu déclares à YouTube les contenus réalistes générés ou modifiés par intelligence artificielle.</li>
     <li>Tu possèdes les droits sur tout ce que contient la vidéo (musiques, images, extraits, polices).</li>
+    <li>Tu n'utilises que ta propre voix, ou une voix dont tu as l'accord écrit de la personne.</li>
     <li>Tu respectes le Règlement de la communauté YouTube : pas de contenu trompeur, haineux, violent, sexuel ni de spam.</li>
 </ul>
 
-<h2>5. Ta clé d'API</h2>
+<h2>6. Ta clé d'API et ton mot de passe</h2>
 <p>
-    Ta clé d'API est personnelle et secrète. Ne la partage pas. Si tu penses qu'elle a été vue par quelqu'un
-    d'autre, régénère-la tout de suite sur la page « Ma clé d'API ».
+    Ta clé d'API et ton mot de passe sont personnels et secrets. Ne les partage pas. Si tu penses qu'une clé a été
+    vue par quelqu'un d'autre, supprime-la tout de suite sur la page « Mes clés » et crée-en une nouvelle.
 </p>
 
-<h2>6. Limites d'utilisation</h2>
+<h2>7. Offres, paiement et renouvellement</h2>
+<ul>
+    <li>Une offre gratuite permet d'essayer le service avec des limites (nombre de vidéos, durée de voix).</li>
+    <li>Les offres payantes sont achetées sur le site Batch Code IA ; le paiement est traité par Stripe. Le prix, les
+        taxes et le contenu de chaque offre sont affichés avant l'achat. [Prix et limites à compléter (décision D1).]</li>
+    <li>Un abonnement se renouvelle automatiquement à la fin de chaque période (par exemple chaque mois), au prix en
+        vigueur, jusqu'à ce que tu l'annules. Nous te prévenons avant tout changement de prix.</li>
+</ul>
+
+<h2>8. Annulation et remboursement</h2>
+<ul>
+    <li>Tu peux annuler ton abonnement à tout moment depuis ton espace client sur le site Batch Code IA. Il reste
+        actif jusqu'à la fin de la période déjà payée, puis ton compte revient à l'offre gratuite.</li>
+    <li>[Règle de remboursement à décider : par exemple, remboursement complet sur demande dans les 14 jours
+        suivant le premier paiement si aucune vidéo payante n'a été fabriquée.]</li>
+    <li>Si le service ne fonctionne pas par notre faute, écris-nous par la <a href="{% url 'contact' %}">page Contact</a> :
+        nous trouvons une solution (crédit ou remboursement).</li>
+</ul>
+
+<h2>9. Limites d'utilisation</h2>
 <p>
-    Pour protéger le service et le quota accordé par Google, le nombre d'envois par jour et la taille des vidéos
-    sont limités. YouTube peut aussi appliquer ses propres limites à ta chaîne.
+    Pour protéger le service et le quota accordé par Google, le nombre d'envois par jour, la durée de voix et la
+    taille des vidéos sont limités. YouTube peut aussi appliquer ses propres limites à ta chaîne. Si une limite est
+    atteinte, le service s'arrête et te prévient ; il ne relance pas l'envoi tout seul.
 </p>
 
-<h2>7. Disponibilité</h2>
+<h2>10. Disponibilité</h2>
 <p>
     Nous faisons de notre mieux pour que le service fonctionne, sans garantie. Un envoi peut échouer, par
-    exemple si YouTube le refuse. Garde toujours une copie de tes vidéos.
+    exemple si YouTube le refuse. Garde toujours une copie de tes textes et de tes vidéos.
 </p>
 
-<h2>8. Responsabilité</h2>
+<h2>11. Responsabilité</h2>
 <p>[À rédiger avec un professionnel : limites de responsabilité de l'éditeur.]</p>
 
-<h2>9. Suspension et suppression</h2>
+<h2>12. Suspension et suppression</h2>
 <p>
     Tu peux supprimer ton compte à tout moment. Nous pouvons suspendre un compte qui ne respecte pas ces
     conditions ou les règles de YouTube.
 </p>
 
-<h2>10. Modifications et droit applicable</h2>
+<h2>13. Modifications et droit applicable</h2>
 <p>
     Nous pouvons modifier ces conditions ; la date en haut de la page indique la dernière version.
     Droit applicable : [province ou pays].
 </p>
 
-<p>Contact : <a href="mailto:sambademblee40@outlook.fr">sambademblee40@outlook.fr</a></p>
-<p><a href="{% url 'login' %}">Retour au site</a></p>
+<p>Contact : <a href="{% url 'contact' %}">page Contact</a> ou <a href="mailto:{{ adresse_support }}">{{ adresse_support }}</a></p>
+<p><a href="{% url 'accueil' %}">Retour au site</a></p>
 {% endblock %}

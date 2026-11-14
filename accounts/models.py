@@ -68,3 +68,27 @@ class JetonOAuth(models.Model):
     rafraichissement_expire_le = models.DateTimeField()
     revoque = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
+
+
+# ---------- Liste d'attente tant que l'application Google n'est pas vérifiée (100 utilisateurs à vie) ----------
+
+class ConnexionGoogle(models.Model):
+    """Un compte qui a connecté une chaîne au moins une fois : Google le compte à vie, même après déconnexion.
+    Si le compte est supprimé, la ligne reste sans aucune donnée personnelle (user vide) pour garder le bon total."""
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+                                related_name="connexion_google")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
+class ListeAttente(models.Model):
+    """Personne qui attend une place pour connecter sa chaîne ; effacée avec son compte."""
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="liste_attente")
+    email = models.EmailField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "inscription en liste d'attente"
+        verbose_name_plural = "liste d'attente"
+
+    def __str__(self):
+        return f"{self.user} ({self.email})"

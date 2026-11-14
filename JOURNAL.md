@@ -621,3 +621,20 @@ Tenue à jour : cocher ici quand une ligne est faite.
   → le PC (processeur de portable) rend environ 4 à 5 fois plus lentement que la durée de la vidéo, quels que soient
   les réglages : c'est la limite. Ce que Claude avait annoncé (« 2 fois plus rapide avec 10 cœurs ») était faux.
 - 120 tests OK.
+
+## Lot 3 — Comptes et pages (14 novembre 2026, sur le PC)
+- A1 courriel obligatoire et unique (sans tenir compte des majuscules) à l'inscription ; page « Mon compte » pour ajouter
+  ou changer son courriel (mot de passe demandé) ; un ancien compte sans courriel est envoyé sur « Mon compte » à la
+  connexion (sauf s'il revient d'une autorisation d'agent IA) et un rappel s'affiche sur l'accueil.
+- A2 mot de passe oublié : vues intégrées de Django, 4 pages au design du site, courriel en français, lien valable 1 h
+  et une seule fois, même réponse que le compte existe ou non, 5 demandes par heure et par adresse IP au maximum.
+- A4 liste d'attente : compteur à vie des comptes ayant connecté une chaîne (`ConnexionGoogle`, rempli avec les chaînes
+  déjà connectées) ; à 90 (`SEUIL_LISTE_ATTENTE_GOOGLE`), « Connecter ma chaîne » mène à la liste d'attente
+  (reconnexion toujours permise) et Samba reçoit un courriel ; `GOOGLE_APPLICATION_VERIFIEE=True` retire la limite.
+- P1 page Contact (sujet, courriel, message) → courriel à `SUPPORT_EMAIL` (réponse directe au client), rien
+  d'enregistré ; piège à robots + 5 messages par heure et par IP (50 pour tout le site). Liens : pied de page, menu « Mon compte ».
+- P3 / P4 confidentialité et conditions réécrites (sous-traitants Modal, DigitalOcean, Brevo, Stripe ; Loi 25 ;
+  durées ; bêta ; offres, renouvellement, annulation, remboursement) : **brouillons à valider par Samba**.
+  Adresse personnelle remplacée par `SUPPORT_EMAIL` dans les pages (P2 : reste à créer la boîte support@).
+- Migration : accounts 0005 (pas encore appliquée : `python manage.py migrate` à lancer par Samba).
+- Tests : 150 OK (9 sautés sans le paquet mcp), `manage.py check` sans erreur.

@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block titre %}Nouveau mot de passe{% endblock %}
+
+{% block contenu %}
+<h1>Nouveau mot de passe</h1>
+{% if validlink %}
+    <p>Choisis ton nouveau mot de passe et écris-le deux fois.</p>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">Enregistrer mon nouveau mot de passe</button>
+    </form>
+{% else %}
+    <p class="message error">Ce lien ne fonctionne plus : il a déjà servi ou il a plus d'1 heure.</p>
+    <p><a role="button" href="{% url 'password_reset' %}">Recevoir un nouveau lien</a></p>
+{% endif %}
+{% endblock %}

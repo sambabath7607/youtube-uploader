@@ -2,9 +2,13 @@ from django.contrib import admin
 from django.urls import path, include
 
 from accounts import oauth_serveur
+from accounts.views import connecter_ma_chaine
 
 urlpatterns = [
     path("admin/", admin.site.urls),
+    # « Connecter ma chaîne » passe d'abord par la liste d'attente (limite Google de 100 utilisateurs), placé avant
+    # youtube_uploader.urls pour l'emporter sur /youtube/connecter/ ; {% url 'connecter_youtube' %} y mène toujours
+    path("youtube/connecter/", connecter_ma_chaine),
     path("youtube/", include("youtube_uploader.urls")),
     # Connexion en un clic (OAuth) des agents IA au connecteur /mcp
     path(".well-known/oauth-authorization-server", oauth_serveur.metadonnees_serveur),

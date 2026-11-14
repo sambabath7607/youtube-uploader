@@ -6,7 +6,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from youtube_uploader.models import Video, YouTubeCredentials
-from .models import CleApi, empreinte
+from .models import CleApi, ConnexionGoogle, empreinte
 
 
 class MaCleTests(TestCase):
@@ -61,8 +61,8 @@ class MaCleTests(TestCase):
 
 class InscriptionTests(TestCase):
     def donnees(self, **autres):
-        valeurs = {"username": "nouveau", "password1": "UnMotDePasse!2026", "password2": "UnMotDePasse!2026",
-                   "age_minimum": "on", "accepte_conditions": "on"}
+        valeurs = {"username": "nouveau", "email": "nouveau@exemple.com", "password1": "UnMotDePasse!2026",
+                   "password2": "UnMotDePasse!2026", "age_minimum": "on", "accepte_conditions": "on"}
         valeurs.update(autres)
         return {cle: valeur for cle, valeur in valeurs.items() if valeur is not None}
 
@@ -118,6 +118,9 @@ class DonneesEtSuppressionTests(TestCase):
         self.assertFalse(YouTubeCredentials.objects.exists())
         self.assertFalse(CleApi.objects.exists())
         self.assertFalse(Video.objects.exists())
+        # Le compteur Google garde la ligne, mais sans aucune donnée personnelle
+        self.assertEqual(ConnexionGoogle.objects.count(), 1)
+        self.assertIsNone(ConnexionGoogle.objects.get().user)
 
 
 class PagesPubliquesTests(TestCase):

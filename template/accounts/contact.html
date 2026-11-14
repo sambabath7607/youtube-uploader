@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block titre %}Contact{% endblock %}
+{% block description %}Une question ou un problème avec YouTube Uploader ? Écris-nous.{% endblock %}
+
+{% block contenu %}
+<h1>Nous écrire</h1>
+<p>Une question, un problème, une demande sur tes données ? Écris-nous : nous répondons par courriel.</p>
+
+<form method="post">
+    {% csrf_token %}
+    {% for champ in form %}
+        {% if champ.name == "site_web" %}
+            <p class="piege" aria-hidden="true">{{ champ.label_tag }} {{ champ }}</p>
+        {% else %}
+            <p>
+                {{ champ.label_tag }}
+                {{ champ }}
+                {% for erreur in champ.errors %}<small class="message error">{{ erreur }}</small>{% endfor %}
+            </p>
+        {% endif %}
+    {% endfor %}
+    <p><small>Ton message nous est envoyé par courriel ; il n'est pas gardé sur le site.
+        Voir la <a href="{% url 'confidentialite' %}">politique de confidentialité</a>.</small></p>
+    <button type="submit">Envoyer mon message</button>
+</form>
+
+<p>Tu peux aussi écrire directement à <a href="mailto:{{ adresse_support }}">{{ adresse_support }}</a>.</p>
+{% endblock %}

@@ -72,6 +72,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'accounts.contexte.support',   # adresse de support dans toutes les pages (lot 3)
             ],
         },
     },
@@ -151,6 +152,19 @@ DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "Batch Code IA <norepl
 LOGIN_REDIRECT_URL = "accueil"
 LOGIN_URL = 'login'
 LOGOUT_REDIRECT_URL = "login"
+
+# --- Courriels / comptes (lot 3 : courriel à l'inscription, mot de passe oublié, contact, liste d'attente) ---
+# Adresse qui reçoit les messages de la page Contact et les avis « liste d'attente ».
+# À remplacer dans .env par support@batchcodeia.com quand la boîte existera (tâche P2).
+SUPPORT_EMAIL = os.environ.get("SUPPORT_EMAIL", "sambademblee40@outlook.fr")
+# Lien « mot de passe oublié » : valable 1 heure (et une seule fois : il change dès que le mot de passe change)
+PASSWORD_RESET_TIMEOUT = 60 * 60
+# Application Google non vérifiée = 100 utilisateurs à vie : au-delà de ce seuil, liste d'attente au lieu de la connexion
+SEUIL_LISTE_ATTENTE_GOOGLE = int(os.environ.get("SEUIL_LISTE_ATTENTE_GOOGLE", "90"))
+GOOGLE_APPLICATION_VERIFIEE = os.environ.get("GOOGLE_APPLICATION_VERIFIEE", "False") == "True"
+# Anti-abus : nombre maximal de messages Contact et de demandes « mot de passe oublié » par heure et par adresse IP
+LIMITE_CONTACT_PAR_HEURE = 5
+LIMITE_REINITIALISATION_PAR_HEURE = 5
 
 
 MEDIA_ROOT = BASE_DIR / "media"

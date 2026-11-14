@@ -3,6 +3,11 @@
 
 <h1>Bienvenue, {{ user.username }} !</h1>
 
+{% if not user.email %}
+<p class="message error">Ton compte n'a pas d'adresse courriel : sans elle, impossible de le retrouver si tu oublies
+    ton mot de passe. <a href="{% url 'mon_compte' %}">Ajouter mon courriel</a></p>
+{% endif %}
+
 {% if etapes_faites < nb_etapes %}
 <article>
     <h2>Démarrer ({{ etapes_faites }} / {{ nb_etapes }})</h2>
@@ -60,6 +65,7 @@
 
 <h2>Mon compte</h2>
 <ul>
+    <li><a href="{% url 'mon_compte' %}">Mon courriel</a></li>
     <li><a href="{% url 'mes_donnees' %}">Télécharger mes données</a></li>
     <li><a href="{% url 'supprimer_compte' %}">Supprimer mon compte</a></li>
 </ul>

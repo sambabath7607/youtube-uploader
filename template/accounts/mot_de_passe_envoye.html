@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block titre %}Courriel envoyé{% endblock %}
+
+{% block contenu %}
+<h1>Regarde tes courriels</h1>
+<p class="message success">Si un compte utilise cette adresse, un lien vient de lui être envoyé.</p>
+<p>Le lien est valable 1 heure et ne sert qu'une seule fois.</p>
+<p>Rien reçu après quelques minutes ? Regarde dans les courriels indésirables, vérifie l'adresse et
+    <a href="{% url 'password_reset' %}">recommence</a>, ou <a href="{% url 'contact' %}">écris-nous</a>.</p>
+<p><a href="{% url 'login' %}">Retour à la connexion</a></p>
+{% endblock %}

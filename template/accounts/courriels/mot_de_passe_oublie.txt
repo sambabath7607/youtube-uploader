@@ -1,0 +1,12 @@
+{% autoescape off %}Bonjour {{ user.get_username }},
+
+Tu as demandé à changer le mot de passe de ton compte YouTube Uploader (Batch Code IA).
+Clique sur ce lien pour en choisir un nouveau :
+
+{{ protocol }}://{{ domain }}{% url 'password_reset_confirm' uidb64=uid token=token %}
+
+Ce lien est valable 1 heure et ne sert qu'une seule fois.
+Ce n'est pas toi ? Ignore ce courriel : ton mot de passe actuel reste le même.
+
+Batch Code IA
+{% endautoescape %}

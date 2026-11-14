@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block titre %}Mon compte{% endblock %}
+
+{% block contenu %}
+<h1>Mon compte</h1>
+<p>Nom d'utilisateur : <strong>{{ user.username }}</strong></p>
+
+<h2>Mon adresse courriel</h2>
+{% if not user.email %}
+    <p class="message error">Ton compte n'a pas encore d'adresse courriel. Sans elle, tu ne peux pas retrouver ton
+        compte si tu oublies ton mot de passe.</p>
+{% endif %}
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Enregistrer mon courriel</button>
+</form>
+
+<h2>Mes données</h2>
+<ul>
+    <li><a href="{% url 'mes_donnees' %}">Télécharger mes données</a></li>
+    <li><a href="{% url 'supprimer_compte' %}">Supprimer mon compte</a></li>
+</ul>
+{% endblock %}

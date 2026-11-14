@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block titre %}Mot de passe oublié{% endblock %}
+
+{% block contenu %}
+<h1>Mot de passe oublié</h1>
+<p>Écris l'adresse courriel de ton compte. Nous t'envoyons un lien pour choisir un nouveau mot de passe.</p>
+
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Recevoir le lien</button>
+</form>
+
+<p>Tu n'as pas mis de courriel dans ton compte ? <a href="{% url 'contact' %}">Écris-nous</a> avec ton nom d'utilisateur.</p>
+<p><a href="{% url 'login' %}">Retour à la connexion</a></p>
+{% endblock %}

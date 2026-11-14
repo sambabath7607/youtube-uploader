@@ -1,13 +1,22 @@
+import logging
+
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.views import LoginView, PasswordResetView
+from django.core.mail import EmailMessage, send_mail
 from django.http import JsonResponse
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, resolve_url
+from django.urls import reverse, reverse_lazy
 
 from youtube_uploader.models import Video, YouTubeCredentials
-from youtube_uploader.oauth import revoquer_token_google
-from .forms import InscriptionForm
-from .models import CleApi
+from youtube_uploader.oauth import connecter_youtube, revoquer_token_google
+from .forms import ContactForm, CourrielForm, InscriptionForm, ListeAttenteForm
+from .limites import limite_atteinte
+from .models import CleApi, ConnexionGoogle, ListeAttente
+
+journal = logging.getLogger(__name__)
 
 
 def accueil(request):
@@ -140,3 +149,120 @@ def guide_api(request):
 
 def guide_claude(request):
     return render(request, "accounts/guide_claude.html")
+
+
+# ---------- Connexion, mot de passe oublié, « Mon compte » ----------
+
+class ConnexionView(LoginView):
+    """Connexion : un ancien compte sans courriel est envoyé sur « Mon compte » pour l'ajouter."""
+    template_name = "accounts/login.html"
+
+    def get_success_url(self):
+        adresse = self.get_redirect_url()   # ex. retour vers l'autorisation d'un agent IA : on ne l'interrompt pas
+        if not adresse and not self.request.user.email:
+            messages.info(self.request, "Ajoute ton adresse courriel : elle te permettra de retrouver ton compte "
+                                        "si tu oublies ton mot de passe.")
+            return reverse("mon_compte")
+        return adresse or resolve_url(settings.LOGIN_REDIRECT_URL)
+
+
+class MotDePasseOublieView(PasswordResetView):
+    """Envoie le lien par courriel. Même message que le compte existe ou non (on ne révèle pas qui est inscrit)."""
+    template_name = "accounts/mot_de_passe_oublie.html"
+    email_template_name = "accounts/courriels/mot_de_passe_oublie.txt"
+    subject_template_name = "accounts/courriels/mot_de_passe_oublie_sujet.txt"
+    success_url = reverse_lazy("password_reset_done")
+
+    def form_valid(self, form):
+        if limite_atteinte(self.request, "reinitialisation", settings.LIMITE_REINITIALISATION_PAR_HEURE):
+            return redirect(self.success_url)   # rien n'est envoyé, sans le dire (anti-abus)
+        return super().form_valid(form)
+
+
+@login_required
+def mon_compte(request):
+    if request.method == "POST":
+        form = CourrielForm(request.user, request.POST)
+        if form.is_valid():
+            request.user.email = form.cleaned_data["email"]
+            request.user.save(update_fields=["email"])
+            messages.success(request, "Ton adresse courriel est enregistrée.")
+            return redirect("mon_compte")
+    else:
+        form = CourrielForm(request.user, initial={"email": request.user.email})
+    return render(request, "accounts/mon_compte.html", {"form": form})
+
+
+# ---------- Contact / support ----------
+
+def contact(request):
+    """Le message part par courriel à l'adresse de support ; il n'est pas enregistré sur le site."""
+    if request.method == "POST":
+        form = ContactForm(request.POST)
+        if form.is_valid():
+            if form.cleaned_data["site_web"]:   # robot : on fait comme si tout allait bien
+                return redirect("contact_envoye")
+            if limite_atteinte(request, "contact", settings.LIMITE_CONTACT_PAR_HEURE, maximum_global=50):
+                messages.error(request, "Trop de messages envoyés en peu de temps. Réessaie dans une heure, "
+                                        f"ou écris directement à {settings.SUPPORT_EMAIL}.")
+                return render(request, "accounts/contact.html", {"form": form})
+            sujet = dict(ContactForm.SUJETS)[form.cleaned_data["sujet"]]
+            compte = request.user.username if request.user.is_authenticated else "visiteur sans compte"
+            corps = (f"Sujet : {sujet}\nCourriel : {form.cleaned_data['email']}\nCompte : {compte}\n\n"
+                     f"{form.cleaned_data['message']}")
+            try:
+                EmailMessage(f"[Contact] {sujet}", corps, None, [settings.SUPPORT_EMAIL],
+                             reply_to=[form.cleaned_data["email"]]).send()
+            except Exception:
+                journal.exception("Message de contact non envoyé")
+                messages.error(request, "Ton message n'a pas pu partir (problème d'envoi de courriel). "
+                                        f"Réessaie plus tard, ou écris directement à {settings.SUPPORT_EMAIL}.")
+                return render(request, "accounts/contact.html", {"form": form})
+            return redirect("contact_envoye")
+    else:
+        initial = {"email": request.user.email} if request.user.is_authenticated else {}
+        form = ContactForm(initial=initial)
+    return render(request, "accounts/contact.html", {"form": form})
+
+
+def contact_envoye(request):
+    return render(request, "accounts/contact_envoye.html")
+
+
+# ---------- Liste d'attente avant la limite Google de 100 utilisateurs ----------
+
+def liste_attente_active():
+    if settings.GOOGLE_APPLICATION_VERIFIEE:
+        return False
+    return ConnexionGoogle.objects.count() >= settings.SEUIL_LISTE_ATTENTE_GOOGLE
+
+
+@login_required
+def connecter_ma_chaine(request):
+    """Remplace l'adresse « Connecter ma chaîne » : au-delà du seuil, liste d'attente (sauf pour une reconnexion)."""
+    deja_compte = ConnexionGoogle.objects.filter(user=request.user).exists()
+    if liste_attente_active() and not deja_compte:
+        return redirect("liste_attente")
+    return connecter_youtube(request)
+
+
+@login_required
+def liste_attente(request):
+    inscription = ListeAttente.objects.filter(user=request.user).first()
+    if request.method == "POST" and inscription is None:
+        form = ListeAttenteForm(request.POST)
+        if form.is_valid():
+            inscription = ListeAttente.objects.create(user=request.user, email=form.cleaned_data["email"])
+            try:
+                send_mail("[Liste d'attente] Nouvelle inscription",
+                          f"{request.user.username} attend une place pour connecter sa chaîne. "
+                          f"Personnes en attente : {ListeAttente.objects.count()}. "
+                          "Pense à demander la vérification de l'application Google.",
+                          None, [settings.SUPPORT_EMAIL])
+            except Exception:
+                journal.exception("Avis liste d'attente non envoyé")
+            messages.success(request, "C'est noté : nous t'écrirons dès qu'une place se libère.")
+            return redirect("liste_attente")
+    else:
+        form = ListeAttenteForm(initial={"email": request.user.email})
+    return render(request, "accounts/liste_attente.html", {"form": form, "inscription": inscription})

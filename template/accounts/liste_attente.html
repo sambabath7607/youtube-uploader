@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block titre %}Liste d'attente{% endblock %}
+
+{% block contenu %}
+<h1>Liste d'attente</h1>
+<p>Le service est en bêta : tant que Google n'a pas fini de vérifier notre application, le nombre de chaînes
+    YouTube connectées est limité, et toutes les places sont prises pour le moment.</p>
+
+{% if inscription %}
+    <p class="message success">Tu es sur la liste d'attente depuis le {{ inscription.created_at|date:"j F Y" }}.
+        Nous t'écrirons à {{ inscription.email }} dès qu'une place se libère.</p>
+{% else %}
+    <p>Laisse ton courriel : nous t'écrivons dès que tu peux connecter ta chaîne.</p>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">M'inscrire sur la liste d'attente</button>
+    </form>
+{% endif %}
+
+<p><a href="{% url 'accueil' %}">Retour à l'accueil</a></p>
+{% endblock %}

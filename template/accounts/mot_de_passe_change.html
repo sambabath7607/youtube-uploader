@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block titre %}Mot de passe changé{% endblock %}
+
+{% block contenu %}
+<h1>Mot de passe changé</h1>
+<p class="message success">Ton nouveau mot de passe est enregistré.</p>
+<p><a role="button" href="{% url 'login' %}">Se connecter</a></p>
+{% endblock %}
