@@ -1,10 +1,11 @@
 {% extends "base.html" %}
-{% block titre %}Batch Code IA – Publie tes vidéos YouTube avec Claude Code et ta voix{% endblock %}
+{% block titre %}Batch Code IA – Publie tes vidéos YouTube avec ton agent IA et ta voix{% endblock %}
 
 {% block contenu %}
-<h1>Crée et publie tes vidéos YouTube avec Claude Code… et ta propre voix</h1>
-<p><strong>Batch Code IA</strong> relie ta chaîne YouTube à Claude Code. Tu décris la vidéo que tu veux :
-Claude Code écrit le script, le lit avec ta voix, fabrique la vidéo animée et la publie sur ta chaîne.</p>
+<h1>Crée et publie tes vidéos YouTube avec ton agent IA… et ta propre voix</h1>
+<p><strong>Batch Code IA</strong> relie ta chaîne YouTube à ton agent IA (Claude, ChatGPT…). Tu décris la vidéo que
+tu veux : l'agent écrit le script, nos serveurs le lisent avec ta voix, fabriquent la vidéo animée et la publient sur
+ta chaîne. Rien à installer, même depuis ton téléphone.</p>
 
 <p>
     <a role="button" href="{% url 'inscription' %}">Créer un compte gratuit</a>
@@ -16,8 +17,8 @@ Claude Code écrit le script, le lit avec ta voix, fabrique la vidéo animée et
     <li><strong>Connecte ta chaîne YouTube</strong> (connexion sécurisée Google). Le site ne demande que le droit
         d'envoyer des vidéos sur ta chaîne.</li>
     <li><strong>Enregistre ta voix une fois</strong> (1 minute, avec ton consentement). Elle sert uniquement à tes vidéos.</li>
-    <li><strong>Demande à Claude Code</strong> : « Crée une vidéo de 5 minutes sur les boucles en Python avec ma voix ».
-        Il te montre le plan, puis publie la vidéo et te donne le lien.</li>
+    <li><strong>Demande à ton agent IA</strong> : « Crée une vidéo de 3 minutes sur les boucles en Python avec ma voix ».
+        Il te montre le plan ; la vidéo est fabriquée sur nos serveurs, publiée, et tu reçois le lien.</li>
 </ol>
 
 <h2>Ce que fait le service</h2>
@@ -34,6 +35,7 @@ pas tes données et nous ne les utilisons pas pour la publicité. Détails : <a 
 de confidentialité</a> et <a href="{% url 'conditions' %}">conditions d'utilisation</a>. Tu peux retirer l'accès du site
 à tout moment sur <a href="https://myaccount.google.com/permissions">la page des autorisations de ton compte Google</a>.</p>
 
-<p><a href="{% url 'guide_claude' %}">Guide : utiliser la plateforme avec Claude Code</a> ·
+<p><a href="{% url 'guide_claude' %}">Guide : utiliser la plateforme avec ton agent IA</a> ·
+   <a href="{% url 'modeles_video' %}">Modèles de vidéos</a> ·
    <a href="{% url 'guide_api' %}">Guide de l'API</a></p>
 {% endblock %}

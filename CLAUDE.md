@@ -72,7 +72,7 @@ Organisation
 - Une page = une action principale, avec un seul bouton principal bien visible.
 
 Mobile et accessibilité
-- Mobile d'abord : le site doit être parfait sur iPhone, puis s'adapter à l'ordinateur.
+- Mobile d'abord : le site doit être parfait sur iPhone, puis s'adapter aux grands écrans.
 - Zones cliquables d'au moins 44 x 44 px.
 - Texte d'au moins 16 px (évite aussi le zoom automatique de l'iPhone dans les formulaires).
 - Contraste suffisant (norme WCAG AA).
@@ -126,11 +126,13 @@ Après
 - Ne jamais dire que c'est terminé sans l'avoir vérifié.
 
 ## Créer et publier une vidéo (sans étape manuelle)
+Les vidéos sont fabriquées sur nos serveurs (Modal) : le client n'installe rien et ne lance aucun rendu.
 Quand l'utilisateur demande de créer une vidéo et de la publier :
-1. Crée l'animation (par exemple avec Remotion) et fabrique le fichier mp4, par exemple : npx remotion render <id> out/video.mp4
-2. Pose les deux questions obligatoires ci-dessous.
-3. Envoie toi-même le fichier avec la commande « Envoyer une vidéo », sans demander à l'utilisateur de le faire.
-4. Suis l'envoi jusqu'à « reussi » ou « echoue », puis donne le lien https://youtu.be/YOUTUBE_ID.
+1. Choisis un modèle (GET /youtube/api/v1/modeles/ : lecon, astuces, presentation, short), écris le script
+   (un paragraphe = une scène) et remplis une scène par paragraphe.
+2. Pose les deux questions obligatoires ci-dessous (sauf réponses enregistrées dans ses préférences).
+3. Lance la fabrication avec « Fabriquer une vidéo » (POST /youtube/api/v1/fabrications/).
+4. Suis la vidéo jusqu'à « reussi » ou « echoue » (ou « fabrication_echouee »), puis donne le lien https://youtu.be/YOUTUBE_ID.
 
 ## Envoi de vidéos par l'API
 RÈGLE OBLIGATOIRE : avant chaque envoi, demande à l'utilisateur :
@@ -144,9 +146,21 @@ curl -X POST https://api.batchcodeia.com/youtube/api/v1/videos/ -H "Authorizatio
 - Champs : titre (obligatoire, 100 caractères max), description (facultatif), pour_enfants (true/false, réponse 1, obligatoire), contenu_ia (true/false, réponse 2), fichier (mp4, mov ou webm, 500 Mo max).
 - Réponse 202 : {"id": 7, "titre": "...", "description": "...", "pour_enfants": false, "etat": "en_attente", "youtube_id": "", "erreur": "", "created_at": "..."}
 
+Fabriquer une vidéo sur nos serveurs — POST /youtube/api/v1/fabrications/ (JSON) :
+curl -X POST https://api.batchcodeia.com/youtube/api/v1/fabrications/ -H "Authorization: Token $YOUTUBE_API_KEY" -H "Content-Type: application/json" -d '{"modele": "lecon", "titre": "TITRE", "script": "Paragraphe 1.\n\nParagraphe 2.", "scenes": [{"type": "titre", "texte": "TITRE"}, {"type": "texte", "texte": "Idée 2"}], "pour_enfants": REPONSE_1, "contenu_ia": REPONSE_2, "avec_ma_voix": true}'
+- Champs : modele (lecon, astuces, presentation, short), titre (100 caractères max), script (un paragraphe séparé par une
+  ligne vide = une scène), scenes (type titre/texte/points/code/fin, texte 200 caractères max, points 6 max, code 20 lignes
+  max, langage), pour_enfants et contenu_ia (obligatoires ; avec_ma_voix = true force contenu_ia à true),
+  avec_ma_voix (true par défaut), visibilite, description, accent (#RRGGBB), musique (calme, energique, aucune).
+- Réponse 202 : même format que l'envoi, avec "etat": "fabrication", "modele", "etape" et "duree_secondes".
+- Erreurs propres : 400 video_trop_longue (10 min, Short 60 s), 400 voix_absente / mode_voix, 409 fabrication_en_cours
+  (une à la fois), 429 quota_voix_atteint, 503 service_video_indisponible. Un échec rend le quota de voix.
+Modèles et champs — GET /youtube/api/v1/modeles/ (liste, exemples, types de scène, règles).
+
 Suivre un envoi — GET /youtube/api/v1/videos/ID/ :
 curl https://api.batchcodeia.com/youtube/api/v1/videos/ID/ -H "Authorization: Token $YOUTUBE_API_KEY"
-Répète au maximum une fois toutes les 10 secondes, jusqu'à ce que "etat" vaille "reussi" ou "echoue", puis donne le résultat à l'utilisateur.
+Répète au maximum une fois toutes les 10 secondes, jusqu'à ce que "etat" vaille "reussi", "echoue" ou "fabrication_echouee",
+puis donne le résultat à l'utilisateur. Pendant "fabrication", le champ "etape" dit où en est la vidéo (voix, rendu 7/12…).
 
 Lister mes vidéos — GET /youtube/api/v1/videos/ (20 par page, ?page=2 pour la suite) :
 curl https://api.batchcodeia.com/youtube/api/v1/videos/ -H "Authorization: Token $YOUTUBE_API_KEY"
@@ -157,7 +171,8 @@ Erreurs possibles : {"erreur": "message", "code": "nom_court"}
 - 400 donnees_invalides (détail dans "details"), 400 youtube_non_connecte : l'utilisateur doit connecter sa chaîne sur le site.
 - 401 : clé absente ou fausse (vérifier YOUTUBE_API_KEY, ou en créer une nouvelle sur /ma-cle/).
 - 404 video_introuvable.
-- 429 limite_envois_atteinte (5 envois par jour) ou trop de requêtes (60 par minute) : s'arrêter et prévenir l'utilisateur.
+- 429 limite_envois_atteinte (5 envois par jour), limite_service_atteinte (quota YouTube du service) ou trop de requêtes
+  (60 par minute) : s'arrêter et prévenir l'utilisateur.
 - "etat": "echoue" avec uploadLimitExceeded ou quotaExceeded dans "erreur" : s'arrêter, ne pas relancer, prévenir l'utilisateur.
 
 

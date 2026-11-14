@@ -5,8 +5,8 @@ from .models import PreferencesPublication, Video, VoixUtilisateur, YouTubeCrede
 
 @admin.register(Video)
 class VideoAdmin(admin.ModelAdmin):
-    list_display = ["titre", "user", "etat", "visibilite", "created_at"]
-    list_filter = ["etat", "visibilite"]
+    list_display = ["titre", "user", "etat", "modele", "etape", "visibilite", "created_at"]
+    list_filter = ["etat", "modele", "visibilite"]
 
 
 @admin.register(YouTubeCredentials)

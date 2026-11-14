@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% load static %}
+{% block titre %}Modèles de vidéos – Batch Code IA{% endblock %}
+{% block description %}Les modèles de vidéos prêts à l'emploi : ton agent IA remplit quelques champs, la vidéo est fabriquée sur nos serveurs.{% endblock %}
+
+{% block contenu %}
+<h1>Modèles de vidéos</h1>
+<p>Ton agent IA (claude.ai, ChatGPT, Claude Code…) choisit un modèle et remplit seulement des champs : le script,
+et pour chaque paragraphe une scène (titre, texte, points ou code). La vidéo est fabriquée <strong>sur nos serveurs</strong>,
+avec ta voix si tu le veux, puis publiée sur ta chaîne. Tu n'installes rien, même depuis ton téléphone.</p>
+
+{% for modele in modeles %}
+<article>
+    <h2>{{ modele.titre }}</h2>
+    <p>{{ modele.description }}</p>
+    {% if modele.apercu %}
+        <video src="{% static modele.apercu %}" controls muted playsinline preload="metadata"
+               aria-label="Aperçu du modèle {{ modele.titre }}"></video>
+    {% endif %}
+    <table>
+        <tbody>
+            <tr><th scope="row">Nom à donner à l'agent</th><td><code>{{ modele.nom }}</code></td></tr>
+            <tr><th scope="row">Format</th><td>{% if modele.format == "9:16" %}Vertical 9:16 (Shorts){% else %}Horizontal 16:9{% endif %}</td></tr>
+            <tr><th scope="row">Durée maximale</th><td>{% if modele.minutes_max %}{{ modele.minutes_max }} min{% endif %}{% if modele.secondes_max %} {{ modele.secondes_max }} s{% endif %}</td></tr>
+            <tr><th scope="row">Scènes possibles</th><td>{{ modele.types_lisibles }} ({{ modele.scenes_max }} scènes au maximum)</td></tr>
+        </tbody>
+    </table>
+    <details>
+        <summary>Exemple de champs remplis</summary>
+        <pre>{{ modele.exemple_json }}</pre>
+    </details>
+</article>
+{% endfor %}
+
+<h2>Les types de scène</h2>
+<table>
+    <thead><tr><th>Type</th><th>Ce qui s'affiche</th></tr></thead>
+    <tbody>
+    {% for nom, explication in types %}
+        <tr><td><code>{{ nom }}</code></td><td>{{ explication }}</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+<h2>Règles simples</h2>
+<ul>
+    <li>Une scène = un paragraphe du script (paragraphes séparés par une ligne vide).</li>
+    <li>La durée de chaque scène suit la voix : rien à régler.</li>
+    <li>Couleur d'accent au choix (par exemple <code>#3B8BFF</code>) ; musique : {% for nom, explication in musiques %}<code>{{ nom }}</code> ({{ explication|lower }}){% if not forloop.last %}, {% endif %}{% endfor %}.</li>
+</ul>
+
+<p><a href="{% url 'guide_claude' %}#creer-une-video">Créer une vidéo avec ton agent IA</a></p>
+{% endblock %}

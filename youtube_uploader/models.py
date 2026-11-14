@@ -23,6 +23,8 @@ class YouTubeCredentials(models.Model):
 
 class Video(models.Model):
     ETATS = [
+        ("fabrication", "Fabrication de la vidéo"),     # rendu en cours sur Modal (fabriquer_video)
+        ("fabrication_echouee", "Fabrication échouée"),
         ("attente_fichier", "En attente du fichier"),   # adresse de dépôt donnée, vidéo pas encore reçue
         ("reception", "Réception du fichier"),
         ("en_attente", "En attente"),
@@ -43,6 +45,12 @@ class Video(models.Model):
     youtube_id = models.CharField(max_length=50, blank=True)
     envoye_le = models.DateTimeField(null=True, blank=True)        # règle YouTube : youtube_id effacé après 30 jours
     erreur = models.TextField(blank=True)
+    # Vidéo fabriquée sur nos serveurs (Modal) à partir d'un modèle : l'agent IA n'a rempli que des champs
+    modele = models.CharField(max_length=20, blank=True)           # lecon, astuces, presentation, short
+    donnees_modele = models.JSONField(default=dict, blank=True)     # script, scènes, musique… (jamais l'extrait de voix)
+    appel_modal = models.CharField(max_length=100, blank=True)      # numéro du travail de fabrication chez Modal
+    etape = models.CharField(max_length=100, blank=True)            # « Voix », « Rendu 7/12 »… (affiché par etat_video)
+    duree_secondes = models.PositiveIntegerField(default=0)         # durée de la vidéo (estimée, puis réelle)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

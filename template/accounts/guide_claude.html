@@ -1,11 +1,12 @@
 {% extends "base.html" %}
-{% block titre %}Utiliser avec Claude Code – Batch Code IA{% endblock %}
-{% block description %}Créer et publier des vidéos YouTube avec Claude Code et ta propre voix, grâce au connecteur Batch Code IA.{% endblock %}
+{% block titre %}Utiliser avec ton agent IA – Batch Code IA{% endblock %}
+{% block description %}Créer et publier des vidéos YouTube avec ton agent IA (Claude, ChatGPT…) et ta propre voix : les vidéos sont fabriquées sur nos serveurs.{% endblock %}
 
 {% block contenu %}
-<h1>Utiliser la plateforme avec Claude Code</h1>
-<p>Avec le connecteur <strong>Batch Code IA</strong>, <strong>Claude Code</strong> (onglet « Code » de l'application Claude, sur ordinateur) peut lire un texte avec ta voix, fabriquer une vidéo
-et la publier sur ta chaîne YouTube. Tu n'installes rien et tu ne tapes aucune commande.</p>
+<h1>Utiliser la plateforme avec ton agent IA</h1>
+<p>Avec le connecteur <strong>Batch Code IA</strong>, ton agent IA (claude.ai, l'application Claude sur téléphone,
+ChatGPT, Claude Code…) écrit le script, et <strong>nos serveurs</strong> fabriquent la vidéo avec ta voix puis la
+publient sur ta chaîne YouTube. Tu n'installes rien et tu ne tapes aucune commande.</p>
 
 <h2>1. Une seule fois : préparer ton compte</h2>
 <ol>
@@ -20,79 +21,78 @@ et la publier sur ta chaîne YouTube. Tu n'installes rien et tu ne tapes aucune 
             <li><em>ou</em> avec une clé : Authentication « No sign in », crée une clé sur
                 <a href="{% url 'ma_cle' %}">Mes clés</a> et mets-la dans Request headers, nom <code>x-api-key</code>.</li>
         </ul>
-        Le connecteur apparaît ensuite tout seul dans Claude Code (onglet « Code » de l'application Claude).
+        Le connecteur apparaît ensuite partout où tu utilises Claude : navigateur, application sur téléphone, Claude Code.
     </li>
 </ol>
 
-<h2>2. Le prompt général à donner à Claude Code</h2>
-<p>Colle ce texte au début d'une nouvelle session de Claude Code : il comprendra ce que la plateforme sait faire
+<h2>2. Le prompt général à donner à ton agent IA</h2>
+<p>Colle ce texte au début d'une nouvelle conversation : ton agent comprendra ce que la plateforme sait faire
 et comment utiliser ses outils.</p>
-<pre id="prompt-general">Tu es Claude Code. Tu m'aides à créer et publier des vidéos YouTube avec la plateforme Batch Code IA (api.batchcodeia.com).
-Utilise UNIQUEMENT les outils du connecteur « Batch Code IA ». Ne me demande jamais de clé d'API ni de commande.
+<pre id="prompt-general">Tu m'aides à créer et publier des vidéos YouTube avec la plateforme Batch Code IA (api.batchcodeia.com).
+Utilise UNIQUEMENT les outils du connecteur « Batch Code IA ». Ne me demande jamais de clé d'API ni de commande :
+les vidéos sont fabriquées sur les serveurs de Batch Code IA, je n'installe rien.
 
 Outils disponibles :
 - mon_compte() : chaîne YouTube connectée (son nom), voix enregistrée, minutes de voix restantes,
-  envois restants aujourd'hui. À appeler avant de créer une vidéo.
-- fabriquer_voix(texte) : lit un texte avec MA voix (enregistrée sur la page « Ma voix » du site).
-  Puis etat_voix(travail) toutes les 20 secondes jusqu'à « pret » : tu reçois url_audio et le minutage de chaque paragraphe.
-- preparer_envoi(titre, pour_enfants, contenu_ia, description, visibilite) : donne une adresse de dépôt secrète
-  (valable 1 heure, une seule fois) pour envoyer sur ma chaîne une vidéo qui se trouve sur l'ordinateur.
-- envoyer_video(url_video, ...) : seulement si la vidéo a déjà un lien public.
-- etat_video(id) : suit l'envoi (en_attente, en_cours, reussi, echoue) ; mes_videos() : liste mes envois.
+  envois restants aujourd'hui, mes réponses enregistrées aux questions de YouTube. À appeler avant de créer une vidéo.
+- modeles_video() : les modèles de vidéos (lecon, astuces, presentation, short) et les champs à remplir.
+- fabriquer_video(modele, script, scenes, titre, pour_enfants, contenu_ia, avec_ma_voix, visibilite, ...) :
+  fabrique la vidéo avec MA voix sur les serveurs, puis la publie sur ma chaîne.
+- etat_video(id) : suit la vidéo (fabrication avec l'étape, envoi YouTube, reussi ou echoue) ; mes_videos() : mes envois.
+- fabriquer_voix(texte) / etat_voix(travail) : seulement si je veux l'audio seul.
+- envoyer_video(url_video, ...) : seulement pour publier une vidéo déjà faite qui a un lien public.
 
 Façon de travailler (RAPIDE) :
-1. Écris le script (un paragraphe = une scène, séparés par une ligne vide) et montre-moi le plan avant de continuer.
-2. Dès que je valide le script, lance fabriquer_voix ET écris les scènes Remotion pendant que la voix se fabrique
-   (ne les fais pas l'une après l'autre). Cale les scènes sur le minutage, vérifie 2 ou 3 images,
-   puis fais le rendu avec tous les cœurs : npx remotion render … --concurrency=N (N = nombre de cœurs moins 2).
-   Les vidéos Remotion se fabriquent avec Claude Code sur ordinateur ; sans terminal (claude.ai, téléphone),
-   propose-moi seulement l'audio.
-3. Avant tout envoi, pose-moi TOUJOURS les questions de YouTube : la vidéo est-elle conçue pour les enfants ?
-   contient-elle des scènes réalistes générées par IA ? (une voix clonée compte comme contenu IA) ;
-   quelle visibilité : privée, non répertoriée ou publique ? Ne choisis jamais à ma place.
-   Dis-moi aussi sur quelle chaîne la vidéo va partir (mon_compte).
-4. Envoie avec preparer_envoi, suis etat_video jusqu'à « reussi », donne-moi le lien YouTube,
-   puis supprime les fichiers temporaires (audio, vidéo).
-5. Limites : 5 envois par jour, 10 minutes de voix par mois. En cas d'erreur (quota_voix_atteint, voix_absente,
+1. Écris le script (un paragraphe = une scène, séparés par une ligne vide) et, pour chaque paragraphe, une scène
+   (titre, texte, points ou code). Montre-moi le plan avant de continuer.
+2. Avant la fabrication, utilise mes réponses enregistrées (mon_compte) ; sinon pose-moi les questions de YouTube :
+   la vidéo est-elle conçue pour les enfants ? contient-elle des scènes réalistes générées par IA ?
+   (une voix clonée compte comme contenu IA) ; quelle visibilité : privée, non répertoriée ou publique ?
+   Ne choisis jamais à ma place. Dis-moi aussi sur quelle chaîne la vidéo va partir.
+3. Dès que je valide, appelle fabriquer_video, puis etat_video toutes les 15 secondes : dis-moi l'étape
+   (voix, rendu, envoi YouTube) et donne-moi le lien YouTube à la fin.
+4. Limites : 5 envois par jour, 10 minutes de voix par mois. En cas d'erreur (quota_voix_atteint, voix_absente,
    limite_envois_atteinte…), arrête-toi et explique-moi simplement quoi faire.
-6. Réponds en français, avec des réponses courtes et un tableau récapitulatif à chaque étape.</pre>
+5. Réponds en français, avec des réponses courtes et un tableau récapitulatif à chaque étape.</pre>
 <button type="button" id="copier-prompt">Copier le prompt</button>
 <span id="prompt-copie" hidden>Prompt copié.</span>
 
-<h2>3. Ce que tu peux demander à Claude Code</h2>
+<h2>3. Ce que tu peux demander</h2>
 <table>
-    <thead><tr><th>Tu veux…</th><th>Demande à Claude Code</th></tr></thead>
+    <thead><tr><th>Tu veux…</th><th>Demande à ton agent IA</th></tr></thead>
     <tbody>
         <tr><td>Vérifier que tout marche</td><td>« Avec Batch Code IA, liste mes vidéos envoyées. »</td></tr>
+        <tr><td>Créer une vidéo de cours</td><td>« Crée une vidéo de 3 minutes sur les boucles en Python avec ma voix, montre-moi le plan d'abord. »</td></tr>
+        <tr><td>Créer un Short</td><td>« Fais un Short vertical de 30 secondes : une astuce Python, avec ma voix. »</td></tr>
+        <tr><td>Partir de tes supports</td><td>« Voici mon plan de cours (texte collé) : fais-en une vidéo avec le modèle leçon. »</td></tr>
         <tr><td>Entendre ta voix sur un texte</td><td>« Lis ce texte avec ma voix et donne-moi le lien de l'audio : … »</td></tr>
-        <tr><td>Créer une vidéo de cours</td><td>« Crée une vidéo de 5 minutes sur les boucles en Python avec ma voix, montre-moi le plan d'abord. »</td></tr>
-        <tr><td>Partir de tes supports</td><td>« Utilise mon PowerPoint (chemin du fichier) pour la partie sur les dictionnaires et fais-en une vidéo. »</td></tr>
-        <tr><td>Publier une vidéo déjà faite</td><td>« Publie la vidéo C:\…\video.mp4 sur ma chaîne avec le titre … »</td></tr>
-        <tr><td>Suivre un envoi</td><td>« Où en est l'envoi de ma dernière vidéo ? »</td></tr>
+        <tr><td>Publier une vidéo déjà en ligne</td><td>« Publie la vidéo de ce lien public sur ma chaîne avec le titre … »</td></tr>
+        <tr><td>Suivre une vidéo</td><td>« Où en est ma dernière vidéo ? »</td></tr>
         <tr><td>Connaître tes limites</td><td>« Combien de minutes de voix me reste-t-il ce mois-ci ? » (outil mon_compte ; visible aussi sur la page Ma voix)</td></tr>
     </tbody>
 </table>
+<p>Les modèles disponibles et leurs champs : <a href="{% url 'modeles_video' %}">Modèles de vidéos</a>.</p>
 
 <h2>4. Où ça marche</h2>
+<p>Partout où ton agent IA accepte le connecteur : la vidéo n'est jamais fabriquée chez toi.</p>
 <table>
-    <thead><tr><th></th><th>Claude Code (ordinateur)</th><th>claude.ai / téléphone</th></tr></thead>
+    <thead><tr><th></th><th>claude.ai et téléphone</th><th>Claude Code et autres agents</th></tr></thead>
     <tbody>
-        <tr><td>Lire un texte avec ta voix</td><td>✅</td><td>✅</td></tr>
-        <tr><td>Fabriquer une vidéo Remotion</td><td>✅</td><td>❌</td></tr>
-        <tr><td>Publier une vidéo de l'ordinateur</td><td>✅ (preparer_envoi)</td><td>❌</td></tr>
-        <tr><td>Publier une vidéo qui a un lien public</td><td>✅</td><td>✅ (envoyer_video)</td></tr>
-        <tr><td>Suivre et lister tes envois</td><td>✅</td><td>✅</td></tr>
+        <tr><td>Fabriquer une vidéo avec ta voix et la publier</td><td>✅ (fabriquer_video)</td><td>✅ (fabriquer_video)</td></tr>
+        <tr><td>Lire un texte avec ta voix (audio seul)</td><td>✅</td><td>✅</td></tr>
+        <tr><td>Publier une vidéo qui a un lien public</td><td>✅ (envoyer_video)</td><td>✅ (envoyer_video)</td></tr>
+        <tr><td>Suivre et lister tes vidéos</td><td>✅</td><td>✅</td></tr>
     </tbody>
 </table>
 
-<h2 id="creer-une-video">5. Créer une vidéo avec Claude Code</h2>
+<h2 id="creer-une-video">5. Créer une vidéo</h2>
 <ol>
-    <li>Ouvre l'<strong>application Claude</strong> sur ton ordinateur, puis l'onglet <strong>Code</strong>, et démarre une <strong>nouvelle session</strong>.</li>
+    <li>Ouvre ton agent IA (claude.ai, l'application Claude sur ton téléphone, Claude Code…) et démarre une <strong>nouvelle conversation</strong>.</li>
     <li>Colle le <strong>prompt général</strong> ci-dessus (bouton « Copier le prompt »).</li>
-    <li>Écris ta demande, par exemple : « Crée une vidéo de 5 minutes sur les boucles en Python avec ma voix, montre-moi le plan d'abord. »</li>
-    <li>Réponds à ses questions (plan, enfants, contenu IA, visibilité). Claude Code fabrique la vidéo, la publie et te donne le lien YouTube.</li>
+    <li>Écris ta demande, par exemple : « Crée une vidéo de 3 minutes sur les boucles en Python avec ma voix, montre-moi le plan d'abord. »</li>
+    <li>Réponds à ses questions (plan, enfants, contenu IA, visibilité). La vidéo est fabriquée sur nos serveurs en
+        quelques minutes, publiée sur ta chaîne, et l'agent te donne le lien YouTube.</li>
 </ol>
-<p><small>claude.ai (navigateur ou téléphone) sait seulement lire un texte avec ta voix et suivre tes envois : il ne fabrique pas de vidéo.</small></p>
 
 <h2 id="autres-agents">6. Les autres agents IA</h2>
 <p>Le connecteur utilise le protocole ouvert <strong>MCP</strong> : il marche avec les agents qui acceptent les
@@ -100,19 +100,18 @@ connecteurs MCP distants. Adresse : <code>https://api.batchcodeia.com/mcp</code>
 ou avec une clé de la page <a href="{% url 'ma_cle' %}">Mes clés</a> (une clé par agent).
 <strong>Seul Claude a été testé</strong> : les réglages ci-dessous suivent la documentation de chaque agent, à confirmer.</p>
 <h3>Ce que chaque agent peut faire</h3>
-<p>Fabriquer une vidéo Remotion et publier une vidéo de l'ordinateur demandent un agent qui peut lancer des
-commandes sur ton ordinateur. Les autres peuvent lire un texte avec ta voix et publier une vidéo qui a déjà un lien public.</p>
+<p>Tout se passe sur nos serveurs : chaque agent qui accepte le connecteur peut fabriquer et publier une vidéo.</p>
 <table>
-    <thead><tr><th>Agent</th><th>Fabriquer une vidéo (Remotion)</th><th>Publier une vidéo de l'ordinateur</th>
-        <th>Publier une vidéo avec un lien public</th><th>Lire avec ta voix</th><th>Testé</th></tr></thead>
+    <thead><tr><th>Agent</th><th>Fabriquer et publier une vidéo</th><th>Publier une vidéo avec un lien public</th>
+        <th>Lire avec ta voix</th><th>Testé</th></tr></thead>
     <tbody>
-        <tr><td><strong>Claude Code</strong> (application Claude, onglet Code)</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
-        <tr><td>claude.ai (navigateur, téléphone)</td><td>❌</td><td>❌</td><td>✅</td><td>✅</td><td>✅</td></tr>
-        <tr><td>ChatGPT (navigateur, téléphone)</td><td>❌</td><td>❌</td><td>✅</td><td>✅</td><td>à tester</td></tr>
-        <tr><td>Cursor</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>à tester</td></tr>
-        <tr><td>VS Code (Copilot, mode agent)</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>à tester</td></tr>
-        <tr><td>Gemini CLI</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>à tester</td></tr>
-        <tr><td>Windsurf</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>à tester</td></tr>
+        <tr><td><strong>claude.ai</strong> (navigateur, téléphone)</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
+        <tr><td><strong>Claude Code</strong></td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
+        <tr><td>ChatGPT (navigateur, téléphone)</td><td>✅</td><td>✅</td><td>✅</td><td>à tester</td></tr>
+        <tr><td>Cursor</td><td>✅</td><td>✅</td><td>✅</td><td>à tester</td></tr>
+        <tr><td>VS Code (Copilot, mode agent)</td><td>✅</td><td>✅</td><td>✅</td><td>à tester</td></tr>
+        <tr><td>Gemini CLI</td><td>✅</td><td>✅</td><td>✅</td><td>à tester</td></tr>
+        <tr><td>Windsurf</td><td>✅</td><td>✅</td><td>✅</td><td>à tester</td></tr>
     </tbody>
 </table>
 
@@ -137,13 +136,13 @@ commandes sur ton ordinateur. Les autres peuvent lire un texte avec ta voix et p
   "headers": {"x-api-key": "TA_CLE"}}}}</pre></td></tr>
     </tbody>
 </table>
-<p><small>Remplace <code>TA_CLE</code> par une clé créée pour cet agent. La fabrication de vidéos Remotion demande un
-agent qui peut lancer des commandes sur ton ordinateur (Claude Code, Cursor, VS Code, Gemini CLI, Windsurf).</small></p>
+<p><small>Remplace <code>TA_CLE</code> par une clé créée pour cet agent.</small></p>
 
 <h2>7. Bon à savoir</h2>
 <ul>
     <li>Tu choisis la visibilité de chaque vidéo (privée, non répertoriée ou publique) ; tu peux la changer ensuite dans YouTube Studio.</li>
     <li>Ta voix ne sert qu'à tes vidéos : personne d'autre ne peut l'utiliser, et tu peux la supprimer à tout moment.</li>
+    <li>La vidéo et l'audio sont effacés de nos serveurs dès que la vidéo est envoyée sur YouTube (réussi ou non).</li>
     <li>Plus de détails techniques : <a href="{% url 'guide_api' %}">Guide de l'API</a>.</li>
 </ul>
 

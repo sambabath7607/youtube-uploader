@@ -1,18 +1,22 @@
 # YouTube Uploader
 
-Site Django + API qui envoie sur YouTube les vidéos créées avec Claude (Claude Code ou connecteur MCP).
+Site Django + API qui fabrique sur nos serveurs (Modal) les vidéos demandées à un agent IA (connecteur MCP)
+et les envoie sur la chaîne YouTube du client. Le client n'installe rien.
 En ligne : https://api.batchcodeia.com
 
 ## Ce que fait le projet
 - `accounts` : inscription, connexion, clé d'API (hachée, affichée une seule fois), export et suppression des données.
 - `youtube_uploader` : connexion de la chaîne YouTube (OAuth Google, jeton chiffré), API `/youtube/api/v1/videos/`,
   file d'attente des envois (worker `traiter_envois`).
-- `mcp_server.py` : connecteur MCP pour Claude.
+- `mcp_server.py` : connecteur MCP pour les agents IA (claude.ai, ChatGPT, Claude Code…).
+- `fabrication_modal/` : rendu des vidéos sur Modal (`service.py`), modèles Remotion (`remotion/`), catalogue des
+  modèles partagé avec le site (`modeles.py`). `voix_modal/` : la voix clonée sur Modal.
 
-## Utiliser avec Claude Code
-Page du site : https://api.batchcodeia.com/guide-claude/ (préparer son compte, ajouter le connecteur dans claude.ai
-avec l'en-tête `x-api-key`, **prompt général** à copier, demandes types, ce qui marche sur ordinateur ou téléphone).
-Outils du connecteur : `mon_compte`, `fabriquer_voix`, `etat_voix`, `preparer_envoi`, `envoyer_video`, `etat_video`, `mes_videos`.
+## Utiliser avec un agent IA
+Page du site : https://api.batchcodeia.com/guide-claude/ (préparer son compte, ajouter le connecteur dans claude.ai,
+**prompt général** à copier, demandes types). Modèles : https://api.batchcodeia.com/youtube/modeles/.
+Outils du connecteur (8) : `mon_compte`, `modeles_video`, `fabriquer_video`, `etat_video`, `mes_videos`,
+`fabriquer_voix`, `etat_voix`, `envoyer_video`.
 
 ## Installation sur un PC
 ```

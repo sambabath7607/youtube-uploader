@@ -1,3 +1,4 @@
+import json
 import logging
 
 from django.contrib import messages
@@ -159,3 +160,23 @@ def mes_preferences(request):
         messages.success(request, "Tes préférences de publication sont enregistrées.")
         return redirect("mes_preferences")
     return render(request, "youtube_uploader/mes_preferences.html", {"prefs": prefs, "visibilites": Video.VISIBILITES})
+
+
+def modeles_video(request):
+    """Page publique « Modèles de vidéos » : ce que chaque modèle produit et les champs que l'agent IA remplit."""
+    from django.conf import settings
+
+    from .api import catalogue_modeles
+    from .fabrication import TYPES_SCENE
+    catalogue = catalogue_modeles()
+    for modele in catalogue["modeles"]:
+        # Aperçu : petite vidéo static/modeles/<nom>.mp4, ajoutée après le premier rendu réel (voir JOURNAL.md)
+        apercu = settings.BASE_DIR / "static" / "modeles" / f"{modele['nom']}.mp4"
+        modele["apercu"] = f"modeles/{modele['nom']}.mp4" if apercu.exists() else None
+        modele["types_lisibles"] = ", ".join(modele["types_de_scene"])
+        modele["minutes_max"] = modele["duree_max_secondes"] // 60
+        modele["secondes_max"] = modele["duree_max_secondes"] % 60
+        modele["exemple_json"] = json.dumps({"modele": modele["nom"], **modele["exemple"]}, ensure_ascii=False, indent=2)
+    return render(request, "youtube_uploader/modeles.html", {
+        "modeles": catalogue["modeles"], "types": TYPES_SCENE.items(), "musiques": catalogue["musiques"].items(),
+    })

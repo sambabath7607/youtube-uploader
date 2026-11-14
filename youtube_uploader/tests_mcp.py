@@ -110,7 +110,7 @@ class OrdreDuFichierTests(SimpleTestCase):
         lignes = (Path(__file__).resolve().parent.parent / "mcp_server.py").read_text(encoding="utf-8").splitlines()
         demarrage = next(i for i, l in enumerate(lignes) if l.startswith("if __name__"))
         outils = [i for i, l in enumerate(lignes) if l.startswith("@mcp.tool()")]
-        self.assertEqual(len(outils), 7)
+        self.assertEqual(len(outils), 8)   # 7 − preparer_envoi + fabriquer_video + modeles_video
         self.assertGreater(demarrage, max(outils))
 
 
@@ -139,3 +139,140 @@ class ConnexionEnUnClicMcpTests(SimpleTestCase):
         entetes = dict(envoye[0]["headers"])
         self.assertEqual(envoye[0]["status"], 401)
         self.assertIn(b"resource_metadata=", entetes[b"www-authenticate"])
+
+
+# ---------- Lot 2 : outils fabriquer_video / modeles_video, correction d'envoyer_video ----------
+# Le paquet mcp n'est installé que sur le serveur : sur le PC, le connecteur est chargé avec de petites doublures
+# (FastMCP, anyio, uvicorn) pour tester quand même ses outils.
+
+def charger_connecteur():
+    if MCP_INSTALLE:
+        return mcp_server
+    import importlib.util as outils_import
+    import sys
+    import types
+    from pathlib import Path
+
+    class FauxFastMCP:
+        def __init__(self, *args, **kwargs):
+            self.outils = {}
+
+        def tool(self):
+            def declarer(fonction):
+                self.outils[fonction.__name__] = fonction
+                return fonction
+            return declarer
+
+        def streamable_http_app(self):
+            return None
+
+    class Semaphore:
+        def __init__(self, nombre):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            return False
+
+    async def run_sync(fonction, *args):
+        return fonction(*args)
+
+    modules = {name: types.ModuleType(name) for name in
+               ("mcp", "mcp.server", "mcp.server.fastmcp", "anyio", "anyio.to_thread", "uvicorn")}
+    modules["mcp.server.fastmcp"].FastMCP = FauxFastMCP
+    modules["anyio"].Semaphore = Semaphore
+    modules["anyio.to_thread"].run_sync = run_sync
+    modules["anyio"].to_thread = modules["anyio.to_thread"]
+    chemin = Path(__file__).resolve().parent.parent / "mcp_server.py"
+    with patch.dict(sys.modules, modules):
+        spec = outils_import.spec_from_file_location("mcp_server_essai", chemin)
+        module = outils_import.module_from_spec(spec)
+        spec.loader.exec_module(module)
+    return module
+
+
+class FausseReponse:
+    status_code = 202
+
+    def __init__(self, corps):
+        self.corps = corps
+
+    def json(self):
+        return self.corps
+
+
+class OutilsFabricationTests(SimpleTestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.connecteur = charger_connecteur()
+
+    def appeler(self, outil, **arguments):
+        jeton = self.connecteur.cle_courante.set("Token " + "a" * 40)
+        try:
+            return asyncio.run(getattr(self.connecteur, outil)(**arguments))
+        finally:
+            self.connecteur.cle_courante.reset(jeton)
+
+    def test_huit_outils_sans_preparer_envoi(self):
+        outils = {nom for nom in dir(self.connecteur) if nom in (
+            "envoyer_video", "etat_video", "mes_videos", "fabriquer_voix", "etat_voix", "mon_compte",
+            "fabriquer_video", "modeles_video", "preparer_envoi")}
+        self.assertNotIn("preparer_envoi", outils)
+        self.assertEqual(len(outils), 8)
+
+    def test_fabriquer_video_transmet_les_champs(self):
+        with patch.object(self.connecteur.requests, "post", return_value=FausseReponse({"id": 9})) as post:
+            reponse = self.appeler("fabriquer_video", modele="short", script="Un.\n\nDeux.", titre="Titre",
+                                   scenes=[{"type": "titre", "texte": "Un"}, {"type": "fin", "texte": "Deux"}],
+                                   pour_enfants=False, contenu_ia=True)
+        self.assertEqual(reponse, {"id": 9})
+        self.assertTrue(post.call_args.args[0].endswith("/youtube/api/v1/fabrications/"))
+        envoye = post.call_args.kwargs["json"]
+        self.assertEqual((envoye["modele"], envoye["avec_ma_voix"], envoye["visibilite"]), ("short", True, "private"))
+        self.assertEqual(len(envoye["scenes"]), 2)
+
+    def test_modeles_video_lit_la_liste(self):
+        with patch.object(self.connecteur.requests, "get", return_value=FausseReponse({"modeles": []})) as get:
+            self.assertEqual(self.appeler("modeles_video"), {"modeles": []})
+        self.assertTrue(get.call_args.args[0].endswith("/youtube/api/v1/modeles/"))
+
+    def test_envoyer_video_par_lien_public_corrige(self):
+        """T3 (bug du 31/10) : « a bytes-like object is required, not '_TemporaryFileWrapper' »."""
+        def faux_telechargement(url, fichier):
+            fichier.write(b"contenu de la video")
+            return None
+
+        def faux_post(url, headers=None, data=None, files=None, timeout=None):
+            # Prépare la vraie requête multipart : c'est ici que l'erreur se produisait
+            corps = requests.Request("POST", url, headers=headers, data=data, files=files).prepare().body
+            self.assertIn(b"contenu de la video", corps)
+            return FausseReponse({"id": 3, "etat": "en_attente"})
+
+        with patch.object(self.connecteur, "telecharger", side_effect=faux_telechargement), \
+                patch.object(self.connecteur.requests, "post", side_effect=faux_post):
+            reponse = self.connecteur.envoyer("Token abc", "https://exemple.com/v.mp4", "Titre", "", False, False)
+        self.assertEqual(reponse, {"id": 3, "etat": "en_attente"})
+
+
+class AucuneFabricationLocaleTests(SimpleTestCase):
+    """C4 / C6 : aucune page, aucun outil, aucun guide ne demande de fabriquer ou déposer la vidéo chez le client."""
+
+    def test_aucune_consigne_ordinateur(self):
+        import re
+        from pathlib import Path
+        racine = Path(__file__).resolve().parent.parent
+        fichiers = [racine / "mcp_server.py", racine / "CLAUDE.md", racine / "README.md",
+                    *sorted((racine / "template").rglob("*.html"))]
+        motif = re.compile(r"ordinateur|npx remotion|--concurrency", re.IGNORECASE)
+        trouves = [f"{f.relative_to(racine)}:{n}" for f in fichiers
+                   for n, ligne in enumerate(f.read_text(encoding="utf-8").splitlines(), 1) if motif.search(ligne)]
+        self.assertEqual(trouves, [])
+
+    def test_preparer_envoi_absent_des_guides_pour_agents(self):
+        from pathlib import Path
+        racine = Path(__file__).resolve().parent.parent
+        for chemin in ("mcp_server.py", "template/accounts/guide_claude.html", "README.md"):
+            self.assertNotIn("preparer_envoi", (racine / chemin).read_text(encoding="utf-8"), chemin)

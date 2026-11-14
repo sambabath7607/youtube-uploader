@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="{% block description %}Envoie tes vidéos sur ta chaîne YouTube depuis le site ou par une API, avec Claude Code.{% endblock %}">
+    <meta name="description" content="{% block description %}Crée tes vidéos YouTube avec ton agent IA et ta voix : fabriquées sur nos serveurs, publiées sur ta chaîne.{% endblock %}">
     <title>{% block titre %}YouTube Uploader{% endblock %}</title>
     <link rel="stylesheet" href="{% static 'css/pico-2.1.1.min.css' %}">
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
@@ -22,9 +22,11 @@
                     <li><a href="{% url 'mes_videos_site' %}">Mes vidéos</a></li>
                     <li><a href="{% url 'ma_voix' %}">Ma voix</a></li>
                     <li><a href="{% url 'ma_cle' %}">Mes clés</a></li>
+                    <li><a href="{% url 'modeles_video' %}">Modèles</a></li>
                     <li><a href="{% url 'guide_claude' %}">Guide</a></li>
                     <li><a href="{% url 'mon_compte' %}">Mon compte</a></li>
                 {% else %}
+                    <li><a href="{% url 'modeles_video' %}">Modèles</a></li>
                     <li><a href="{% url 'guide_claude' %}">Guide</a></li>
                     <li><a href="{% url 'login' %}">Connexion</a></li>
                     <li><a href="{% url 'inscription' %}" role="button">S'inscrire</a></li>

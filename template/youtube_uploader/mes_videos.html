@@ -13,7 +13,7 @@
         <tr>
             <td>{{ video.titre }}</td>
             <td>{{ video.created_at|date:"j M Y H:i" }}</td>
-            <td>{{ video.get_etat_display }}{% if video.erreur %}<br><small>{{ video.erreur }}</small>{% endif %}</td>
+            <td>{{ video.get_etat_display }}{% if video.etat == "fabrication" and video.etape %}<br><small>{{ video.etape }}</small>{% endif %}{% if video.erreur %}<br><small>{{ video.erreur }}</small>{% endif %}</td>
             <td>{{ video.get_visibilite_display }}</td>
             <td>
                 {% if video.youtube_id %}<a href="https://youtu.be/{{ video.youtube_id }}" target="_blank" rel="noopener">Voir</a>

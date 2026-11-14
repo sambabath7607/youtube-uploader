@@ -18,16 +18,31 @@ def probleme_avant_envoi(user):
     if not YouTubeCredentials.objects.filter(user=user).exists():
         return ("Aucune chaîne YouTube connectée. Connecte ta chaîne sur la page d'accueil du site.",
                 "youtube_non_connecte")
-    debut_du_jour = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
-    if Video.objects.filter(user=user, created_at__gte=debut_du_jour).count() >= LIMITE_ENVOIS_PAR_JOUR:
+    du_jour = envois_du_jour()
+    if du_jour.filter(user=user).count() >= LIMITE_ENVOIS_PAR_JOUR:
         return (f"Limite de {LIMITE_ENVOIS_PAR_JOUR} envois par jour atteinte. Réessaie demain.",
                 "limite_envois_atteinte")
+    if du_jour.count() >= limite_service_par_jour():
+        # Quota YouTube partagé par tout le service : on s'arrête avant d'atteindre la limite de Google
+        return ("Le service a atteint sa limite d'envois YouTube pour aujourd'hui. Réessaie demain.",
+                "limite_service_atteinte")
     return None
+
+
+def envois_du_jour():
+    """Vidéos créées aujourd'hui qui partent (ou sont parties) sur YouTube : une fabrication échouée ne compte pas."""
+    debut_du_jour = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    return Video.objects.filter(created_at__gte=debut_du_jour).exclude(etat="fabrication_echouee")
+
+
+def limite_service_par_jour():
+    from django.conf import settings
+    return getattr(settings, "ENVOIS_SERVICE_PAR_JOUR", 90)
 
 
 def envoi_en_double(user, titre):
     """Un envoi du même titre, pas encore terminé et lancé il y a moins d'1 h : c'est une répétition, pas une nouvelle vidéo."""
-    return (Video.objects.filter(user=user, titre=titre, etat__in=["attente_fichier", "reception", "en_attente", "en_cours"],
+    return (Video.objects.filter(user=user, titre=titre, etat__in=["fabrication", "attente_fichier", "reception", "en_attente", "en_cours"],
                                  created_at__gte=timezone.now() - ABANDON_DEPOT)
             .order_by("-created_at").first())
 

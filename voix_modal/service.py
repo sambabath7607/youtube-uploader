@@ -179,7 +179,9 @@ def lire_parallele(texte: str, reference: bytes, debut: float = 0.0) -> dict:
     jeton = secrets.token_urlsafe(32)
     ta.save(str(DOSSIER_AUDIO / f"{jeton}.wav"), torch.cat(tout, dim=1), sr)
     volume.commit()
-    return {"url": f"{telecharger.get_web_url()}?jeton={jeton}", "duree_audio": round(position, 1), "minutage": minutage}
+    # « jeton » : le rendu vidéo (fabrication_modal) lit l'audio directement dans ce volume, sans le télécharger
+    return {"url": f"{telecharger.get_web_url()}?jeton={jeton}", "jeton": jeton, "duree_audio": round(position, 1),
+            "minutage": minutage}
 
 
 @app.function(image=image_legere, volumes={str(DOSSIER_AUDIO): volume})

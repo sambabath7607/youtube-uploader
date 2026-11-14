@@ -173,6 +173,16 @@ MEDIA_URL = "/media/"
 
 
 
+# --- Rendu Modal (lots 1 et 2 : vidéos fabriquées sur Modal, fabrication_modal/service.py) ---
+# Les jetons Modal (MODAL_TOKEN_ID / MODAL_TOKEN_SECRET) restent dans le .env, comme pour la voix.
+RENDU_MODAL_APP = os.environ.get("RENDU_MODAL_APP", "batchcodeia-video")
+# Durée maximale d'une vidéo fabriquée, en secondes (avant les offres du lot 4 : 10 minutes pour tous)
+RENDU_DUREE_MAX_SECONDES = int(os.environ.get("RENDU_DUREE_MAX_SECONDES", "600"))
+# Au-delà de ce délai, la fabrication est arrêtée et le quota de voix est rendu au client
+RENDU_DELAI_MAX_SECONDES = 30 * 60
+# Quota YouTube partagé par tout le service (100 envois par jour) : on s'arrête avant (tâche X3)
+ENVOIS_SERVICE_PAR_JOUR = int(os.environ.get("ENVOIS_SERVICE_PAR_JOUR", "90"))
+
 REST_FRAMEWORK = {"EXCEPTION_HANDLER": "youtube_uploader.erreurs.gestionnaire_erreurs_api"}
 
 # --- Production (DEBUG=False) : site derrière Nginx en HTTPS ---

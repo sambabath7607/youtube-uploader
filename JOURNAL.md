@@ -638,3 +638,93 @@ Tenue à jour : cocher ici quand une ligne est faite.
   Adresse personnelle remplacée par `SUPPORT_EMAIL` dans les pages (P2 : reste à créer la boîte support@).
 - Migration : accounts 0005 (pas encore appliquée : `python manage.py migrate` à lancer par Samba).
 - Tests : 150 OK (9 sautés sans le paquet mcp), `manage.py check` sans erreur.
+
+## Lots 1 et 2 — Vidéos fabriquées sur nos serveurs (Modal), sans PC (14 novembre 2026, sur le PC)
+
+| Tâche | Ce qui a été fait |
+|---|---|
+| M1 | `fabrication_modal/remotion/` : projet Remotion figé sur 4.0.300 (`@remotion/renderer` et `@remotion/bundler` seulement dans l'image Modal) ; `components.tsx`, `theme.ts`, `fonts.ts` et les polices repris de `video-batchcodeia` (le projet du Bureau n'est pas modifié) |
+| M2 | 4 modèles : `lecon`, `astuces`, `presentation` (16:9), `short` (9:16, 60 s, 8 scènes max) ; scènes `titre`, `texte`, `points`, `code`, `fin` ; une scène = un paragraphe, calée sur le minutage de la voix ; accent, musique `calme` / `energique` / `aucune` |
+| M3 | `FabricationSerializer` : modèle, types permis par modèle, paragraphes = scènes, textes (200), points (6 × 90), code (20 lignes), couleur `#RRGGBB`, titre (100) ; messages clairs pour l'agent |
+| M4 | page publique `/youtube/modeles/` (lien « Modèles » dans le menu) : description, format, durée max, scènes, exemple JSON ; l'aperçu vidéo s'affiche dès que `static/modeles/<nom>.mp4` existe |
+| M5 | `fabrication_modal/remotion/LICENCES.md` : Inter et Poppins (OFL), DejaVu Sans Mono, musiques **générées par une formule ffmpeg** (aucun fichier), `musique.wav` / `musique-services.wav` (origine inconnue) **non repris** |
+| F1 | `fabrication_modal/service.py` (app `batchcodeia-video`) : image Node 20 + chrome-headless-shell + ffmpeg, `remotion bundle` fait à la construction ; `Rendu` (4 cœurs, 30 machines max, serveur Node qui garde le navigateur ouvert), `prechauffer`, `rendre_morceau` (~200 images, muet), `rendre_son` (ffmpeg, une fois, pendant le rendu), `assembler` (`concat -c copy` + son), `fabriquer` (chef d'orchestre, `starmap`), `nettoyer` (toutes les heures, vidéos > 2 h) |
+| F2 | `lire_parallele` renvoie aussi `jeton` : le rendu lit le wav dans le volume `batchcodeia-voix-audio` (aucun téléchargement) et l'efface dès l'assemblage |
+| F3 | `modal.Dict` `batchcodeia-video-progression` → champ `etape` (« Voix en cours », « Rendu 7/12 », « Assemblage ») dans `etat_video`, « Mes vidéos » et la page de suivi |
+| F5 | une fabrication à la fois par client (409 `fabrication_en_cours`), 30 machines max, durée max par modèle et `RENDU_DUREE_MAX_SECONDES`, délai max 30 min (arrêt chez Modal), échec → quota de voix rendu |
+| T1 | `Video` : états `fabrication` / `fabrication_echouee`, champs `modele`, `donnees_modele`, `appel_modal`, `etape`, `duree_secondes` — migration `youtube_uploader 0009` (pas appliquée sur db.sqlite3) |
+| T2 | `traiter_envois` : un fil suit les fabrications toutes les 5 s ; vidéo prête → copiée du volume Modal privé par le client Modal → effacée chez Modal → `en_attente` → envoi YouTube existant → fichier effacé du serveur |
+| T3 | bug du 31/10 reproduit (`a bytes-like object is required, not '_TemporaryFileWrapper'`, requests 2.34) et corrigé dans `envoyer_video` (`fichier.file`) ; test ajouté |
+| T4 | temps Modal → serveur mesuré à chaque vidéo (journal du worker « vidéo récupérée chez Modal (X Mo en Y s) » et `donnees_modele.mesures`) ; chiffre réel à noter après la mise en ligne |
+| C1 | `POST /youtube/api/v1/fabrications/` (202), `GET /youtube/api/v1/modeles/` ; documentées dans `guide_api.html` et `CLAUDE.md` |
+| C2 / C3 | outils MCP `fabriquer_video` et `modeles_video` |
+| C4 / C5 | `preparer_envoi` retiré des outils (le dépôt reste dans l'API, section développeurs du guide de l'API) ; plus aucune consigne « ordinateur / npx remotion / --concurrency » dans `mcp_server.py`, les pages, `CLAUDE.md`, `README.md` ; guide : tous les agents MCP fabriquent et publient |
+| C6 | `OrdreDuFichierTests` : 8 outils ; test qui cherche « ordinateur », « npx remotion », « --concurrency » dans les pages, le connecteur, CLAUDE.md et README.md (0 trouvé) |
+| X3 | plafond quotidien pour tout le service `ENVOIS_SERVICE_PAR_JOUR` (90, avant les 100 de Google) → 429 `limite_service_atteinte` ; une fabrication échouée ne compte plus dans la limite du jour |
+
+Écarts au plan (plus rapides ou plus sûrs) :
+- La vidéo finie n'a **pas de lien public** : le worker la lit directement dans le volume Modal privé avec le client
+  Modal (`Volume.read_file`), déjà installé et connecté sur le serveur pour la voix. Pas de machine web à démarrer.
+- Musique : générée par ffmpeg à chaque vidéo (aucune licence à vérifier). Les anciennes musiques ne sont pas reprises.
+- `settings.py` : bloc commenté « Rendu Modal » (`RENDU_MODAL_APP`, `RENDU_DUREE_MAX_SECONDES`, `RENDU_DELAI_MAX_SECONDES`,
+  `ENVOIS_SERVICE_PAR_JOUR`). Aucun nouveau paquet dans Django.
+
+Essai sur le PC (sans Modal, 0 $) : le même code (`serveur.mjs`, `modeles.py`, `rendre_son`, `assembler`) a rendu les
+4 exemples, morceau après morceau, avec le Remotion 4.0.300 du Bureau (copie dans un dossier temporaire) :
+
+| Modèle | Durée | Images | Morceaux | Rendu sur le PC (morceaux l'un après l'autre) | Résultat |
+|---|---|---|---|---|---|
+| lecon (avec une voix d'essai) | 17,2 s | 516 | 3 | 58,6 s | mp4 lisible, son et image de même durée, raccords invisibles |
+| astuces | 24,8 s | 744 | 4 | 82,7 s | idem |
+| presentation | 15,0 s | 450 | 3 | 50,6 s | idem |
+| short (9:16) | 12,7 s | 381 | 2 | 47,4 s | idem |
+
+Sur Modal, les morceaux partent en même temps sur des machines déjà préchauffées : le rendu doit durer à peu près
+le temps d'UN morceau (~200 images). À mesurer pour de vrai (F4, ci-dessous).
+
+Tests : 45 nouveaux (`tests_fabrication.py` 39, `tests_mcp.py` +6 dont les outils MCP chargés avec des doublures,
+car le paquet mcp n'est pas sur le PC). Modal toujours simulé : aucun appel, aucune dépense.
+
+### Commandes pour Samba (une par ligne, dans l'ordre)
+Sur le PC, dans `Nouveau dossier\src` (Modal : le rendu se paie à la seconde, **prix à vérifier** sur modal.com/pricing) :
+```
+..\.venv\Scripts\python.exe -m pip install modal==1.6.3
+..\.venv\Scripts\modal.exe token new
+..\.venv\Scripts\modal.exe deploy voix_modal/service.py
+..\.venv\Scripts\modal.exe deploy fabrication_modal/service.py
+..\.venv\Scripts\modal.exe run fabrication_modal/service.py
+```
+(1re ligne : seulement si `..\.venv\Scripts\modal.exe --version` ne répond pas ; 2e : seulement si ce PC n'est pas encore
+connecté à Modal. La 1re construction de l'image prend plusieurs minutes. La dernière ligne fabrique les 4 vidéos d'essai
+dans `essais_rendu\` — test B2 — et affiche le temps de chaque étape.)
+
+Sur le serveur (`~/youtube-uploader`, `.venv` activé), après avoir fusionné la branche `livraison-complete` dans `main` :
+```
+cp db.sqlite3 ~/db_youtube_avant-lot2_$(date +%F).sqlite3 && chmod 600 ~/db_youtube_avant-lot2_*.sqlite3
+git pull origin main
+python manage.py check
+python manage.py migrate
+python manage.py collectstatic --noinput
+sudo systemctl restart youtube-uploader
+sudo systemctl restart youtube-worker
+sudo systemctl restart youtube-mcp
+```
+Puis vérifier dans claude.ai que le connecteur propose 8 outils (dont `fabriquer_video` et `modeles_video`, sans `preparer_envoi`).
+
+### Procédure de mesure du rendu réel (F4, T4)
+1. Vidéo de 30 s : dans claude.ai, « Avec Batch Code IA, fais une vidéo de 30 secondes avec le modèle astuces, avec ma
+   voix, sur 3 astuces Python ». Noter l'heure de la validation du script.
+2. Toutes les 15 s, `etat_video` donne l'étape : noter l'heure de « Voix en cours », du premier « Rendu 0/N », de
+   « Assemblage », de « en_attente » (vidéo récupérée), de « reussi ».
+3. Sur le serveur : `sudo journalctl -u youtube-worker --since "10 min ago" | grep "récupérée chez Modal"` → taille et
+   temps Modal → serveur (T4 : au-delà de 30 s pour 50 Mo, revoir la décision D8).
+4. Dans l'administration du site, la vidéo → `donnees_modele.mesures` : temps de la voix, du rendu, de l'assemblage, de
+   la récupération, nombre de morceaux.
+5. Recommencer avec une vidéo de 2 minutes (modèle lecon). Objectif : moins de 4 min entre la validation et le lien YouTube.
+6. Tableau de bord Modal (modal.com → app `batchcodeia-video` → Usage) : coût de chaque vidéo → coût par minute de vidéo
+   (tâches F4, L2 ; décision D1).
+7. Écrire les chiffres dans ce journal (tableau : durée vidéo, voix, rendu, assemblage, récupération, envoi YouTube, total, coût).
+8. Aperçus de la page Modèles (M4) : copier les 4 vidéos de `essais_rendu\` dans `static\modeles\` (lecon.mp4,
+   astuces.mp4, presentation.mp4, short.mp4) puis `collectstatic` sur le serveur.
+
+Reste pour Samba : `modal deploy` + essai B2, mesures F4 / T4, mise en ligne (commandes ci-dessus), licence Remotion (L1).

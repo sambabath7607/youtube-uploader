@@ -3,7 +3,9 @@
 
 {% block contenu %}
 <h1>Guide de l'API YouTube Uploader</h1>
-<p>Cette API permet d'envoyer des vidéos sur ta propre chaîne YouTube depuis un terminal ou avec Claude Code, sans passer par le site.</p>
+<p>Cette API permet de fabriquer des vidéos sur nos serveurs et de les envoyer sur ta propre chaîne YouTube,
+sans passer par le site. Le plus simple reste le connecteur pour ton agent IA :
+<a href="{% url 'guide_claude' %}">Utiliser avec ton agent IA</a>.</p>
 
 <h2>1. Créer ton compte</h2>
 <ol>
@@ -26,23 +28,42 @@
 </ul>
 <p>L'API répond tout de suite avec le code 202 et un numéro de vidéo. L'envoi vers YouTube continue en arrière-plan.</p>
 
+<h2>3 bis. Fabriquer une vidéo sur nos serveurs (sans fichier)</h2>
+<p>Tu envoies seulement le script et les scènes d'un <a href="{% url 'modeles_video' %}">modèle</a> : la voix, l'animation et
+le montage sont faits sur nos serveurs, puis la vidéo part sur ta chaîne.</p>
+<pre>curl.exe -X POST https://api.batchcodeia.com/youtube/api/v1/fabrications/ -H "Authorization: Token TA_CLE" -H "Content-Type: application/json" -d "{\"modele\": \"lecon\", \"titre\": \"Les listes en Python\", \"script\": \"Les listes en Python.\n\nUne liste est modifiable.\", \"scenes\": [{\"type\": \"titre\", \"texte\": \"Les listes\"}, {\"type\": \"texte\", \"texte\": \"Une liste est modifiable\"}], \"pour_enfants\": false, \"contenu_ia\": true, \"avec_ma_voix\": true}"</pre>
+<ul>
+    <li><strong>modele</strong> : lecon, astuces, presentation ou short (obligatoire). Liste et champs : GET <code>/youtube/api/v1/modeles/</code>.</li>
+    <li><strong>script</strong> : le texte lu par la voix ; un paragraphe (séparé par une ligne vide) = une scène.</li>
+    <li><strong>scenes</strong> : une scène par paragraphe : type (titre, texte, points, code, fin), texte, points, code, langage.</li>
+    <li><strong>titre</strong>, <strong>pour_enfants</strong>, <strong>contenu_ia</strong> : obligatoires (avec ta voix, contenu_ia vaut toujours true).</li>
+    <li><strong>avec_ma_voix</strong> (true par défaut), <strong>visibilite</strong>, <strong>description</strong>, <strong>accent</strong> (#RRGGBB), <strong>musique</strong> (calme, energique, aucune) : facultatifs.</li>
+</ul>
+<p>Réponse 202 avec un numéro de vidéo et « etat » : « fabrication ». Suis-la comme un envoi (étape suivante) : le champ
+« etape » dit où en est la fabrication (voix, rendu 7/12, assemblage), puis l'envoi YouTube démarre tout seul.
+Erreurs propres à la fabrication : 400 <code>video_trop_longue</code>, 400 <code>voix_absente</code>, 409
+<code>fabrication_en_cours</code> (une à la fois), 429 <code>quota_voix_atteint</code>, 503 <code>service_video_indisponible</code>.</p>
+
 <h2>4. Suivre l'état de l'envoi</h2>
 <pre>curl.exe https://api.batchcodeia.com/youtube/api/v1/videos/NUMERO/ -H "Authorization: Token TA_CLE"</pre>
-<p>Le champ « etat » indique où en est l'envoi. Si l'envoi échoue, le champ « erreur » explique pourquoi.</p>
+<p>Le champ « etat » indique où en est la vidéo : fabrication, fabrication_echouee, en_attente, en_cours, reussi ou echoue.
+Si quelque chose échoue, le champ « erreur » explique pourquoi.</p>
 
 <h2>5. Voir la liste de tes vidéos</h2>
 <pre>curl.exe https://api.batchcodeia.com/youtube/api/v1/videos/ -H "Authorization: Token TA_CLE"</pre>
 <p>La liste affiche 20 vidéos par page. Ajoute ?page=2 à l'adresse pour voir la suite.</p>
 
-<h2>6. Utiliser Claude Code</h2>
-<p>Ouvre Claude Code dans le dossier du projet et demande-lui d'envoyer ta vidéo. Il te posera les questions obligatoires, comme le titre et « pour enfants », avant chaque envoi.</p>
-<p>Le plus simple, sans clé ni commande : le connecteur Batch Code IA. Voir <a href="{% url 'guide_claude' %}">Utiliser avec Claude Code</a> (prompt général à copier et demandes types).</p>
+<h2>6. Pour les développeurs : déposer un fichier en deux temps</h2>
+<p>POST <code>/youtube/api/v1/envois/</code> (mêmes champs que l'envoi, sans le fichier) réserve un envoi et renvoie une
+adresse de dépôt secrète, valable 1 heure et utilisable une seule fois : <code>curl -F "fichier=@video.mp4" "ADRESSE"</code>.
+Cette route sert aux scripts des développeurs ; les agents IA utilisent la fabrication sur nos serveurs.</p>
 
 <h2>Limites</h2>
 <ul>
     <li>Formats acceptés : mp4, mov, webm.</li>
     <li>Taille maximale : 500 Mo.</li>
-    <li>5 envois par jour et par compte.</li>
+    <li>5 envois par jour et par compte (une fabrication échouée ne compte pas).</li>
+    <li>Une vidéo en fabrication à la fois ; durée maximale selon le modèle (10 minutes, 60 secondes pour un Short).</li>
     <li>60 requêtes par minute.</li>
     <li>YouTube a aussi sa propre limite d'envois par jour.</li>
 </ul>
@@ -54,7 +75,9 @@
     <li><strong>401</strong> : clé d'API absente ou fausse.</li>
     <li><strong>404</strong> : vidéo introuvable.</li>
     <li><strong>405</strong> : mauvaise méthode, GET au lieu de POST par exemple.</li>
-    <li><strong>429</strong> : trop de requêtes, ou limite d'envois du jour atteinte.</li>
+    <li><strong>409</strong> : vidéo déjà en cours (même titre) ou déjà en fabrication.</li>
+    <li><strong>429</strong> : trop de requêtes, limite d'envois du jour atteinte (la tienne ou celle du service), ou quota de voix atteint.</li>
+    <li><strong>503</strong> : service de fabrication momentanément indisponible.</li>
 </ul>
 
 <h2>Tes données</h2>

@@ -2,7 +2,7 @@
 {% block titre %}Suivi de l'envoi{% endblock %}
 
 {% block entete %}
-{% if video.etat == "en_attente" or video.etat == "en_cours" %}
+{% if video.etat == "en_attente" or video.etat == "en_cours" or video.etat == "fabrication" %}
     <meta http-equiv="refresh" content="10">
 {% endif %}
 {% endblock %}
@@ -11,6 +11,10 @@
 <h1>Suivi de l'envoi</h1>
 <p>Titre : {{ video.titre }}</p>
 <p>État : {{ video.get_etat_display }}</p>
+{% if video.etat == "fabrication" %}
+    <p>Étape : {{ video.etape|default:"Préparation" }}. La vidéo est fabriquée sur nos serveurs, puis envoyée sur YouTube.
+        Cette page se met à jour toute seule toutes les 10 secondes.</p>
+{% endif %}
 {% if video.etat == "en_attente" or video.etat == "en_cours" %}
     <p>L'envoi vers YouTube se fait en arrière-plan. Cette page se met à jour toute seule toutes les 10 secondes.</p>
 {% endif %}

@@ -4,8 +4,10 @@ Chaque utilisateur envoie SA clé d'API du site dans l'en-tête Authorization
 (« Token SA_CLE »). Le connecteur la transmet telle quelle à l'API Django :
 les vidéos partent donc sur la chaîne de cet utilisateur, et les limites
 de l'API (5 envois par jour, 60 requêtes par minute) s'appliquent à chacun.
+Les vidéos sont fabriquées sur nos serveurs (fabriquer_video) : l'agent IA n'a besoin d'aucun terminal,
+il marche aussi depuis claude.ai, ChatGPT ou un téléphone.
 
-Ajout dans Claude Code :
+Ajout dans Claude Code (terminal) :
 claude mcp add --transport http youtube-uploader https://api.batchcodeia.com/mcp --header "Authorization: Token TA_CLE"
 """
 import contextvars
@@ -31,7 +33,8 @@ load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
 ADRESSE_API = os.environ.get("MCP_ADRESSE_API", "https://api.batchcodeia.com/youtube/api/v1/videos/")
 ADRESSE_PUBLIQUE = os.environ.get("MCP_ADRESSE_PUBLIQUE", "https://api.batchcodeia.com")   # pour le 401 OAuth
 ADRESSE_VOIX = ADRESSE_API.replace("/videos/", "/voix/")
-ADRESSE_ENVOIS = ADRESSE_API.replace("/videos/", "/envois/")
+ADRESSE_FABRICATIONS = ADRESSE_API.replace("/videos/", "/fabrications/")
+ADRESSE_MODELES = ADRESSE_API.replace("/videos/", "/modeles/")
 ADRESSE_COMPTE = ADRESSE_API.replace("/videos/", "/compte/")
 TAILLE_MAX = 500 * 1024 * 1024
 HOTE, PORT = "127.0.0.1", 8100
@@ -192,7 +195,8 @@ def envoyer(cle, url_video, titre, description, pour_enfants, contenu_ia, visibi
                     "contenu_ia": "true" if contenu_ia else "false",
                     "visibilite": visibilite,
                 },
-                files={"fichier": (f"video{extension}", fichier)},
+                # fichier.file : le vrai fichier (requests refuse l'enveloppe NamedTemporaryFile, bug du 31/10)
+                files={"fichier": (f"video{extension}", fichier.file)},
                 timeout=300,
             )
     except requests.RequestException:
@@ -223,7 +227,8 @@ def ecrire(cle, url, donnees):
 @mcp.tool()
 async def envoyer_video(url_video: str, titre: str, pour_enfants: bool, contenu_ia: bool, description: str = "",
                         visibilite: str = "private") -> dict:
-    """Envoie une vidéo sur la chaîne YouTube de l'utilisateur.
+    """Publie sur la chaîne YouTube de l'utilisateur une vidéo DÉJÀ FAITE qui a un lien public.
+    Pour créer une nouvelle vidéo, utilise plutôt fabriquer_video (fabriquée sur nos serveurs).
 
     Avant d'appeler cet outil, demande TOUJOURS à l'utilisateur :
     1. si la vidéo est conçue pour les enfants (pour_enfants) ;
@@ -232,7 +237,6 @@ async def envoyer_video(url_video: str, titre: str, pour_enfants: bool, contenu_
     visibilite : « private » (privée, par défaut), « unlisted » (non répertoriée) ou « public » : demande-lui.
 
     url_video : lien direct et public vers le fichier vidéo (mp4, mov ou webm, 500 Mo maximum).
-    Si la vidéo est sur l'ordinateur (pas de lien public), utilise plutôt preparer_envoi.
     titre : 100 caractères maximum.
     La réponse contient un "id" : utilise ensuite etat_video pour suivre l'envoi.
     """
@@ -246,10 +250,12 @@ async def envoyer_video(url_video: str, titre: str, pour_enfants: bool, contenu_
 
 @mcp.tool()
 async def etat_video(video_id: int) -> dict:
-    """Donne l'état d'un envoi (en_attente, en_cours, reussi ou echoue) et l'ID YouTube une fois réussi.
+    """Donne l'état d'une vidéo et l'ID YouTube une fois réussie (lien : https://youtu.be/ID).
 
-    Ne pas appeler plus d'une fois toutes les 10 secondes. Si l'erreur contient
-    uploadLimitExceeded ou quotaExceeded, arrête-toi et préviens l'utilisateur.
+    États : fabrication (sur nos serveurs ; "etape" dit où on en est : « Voix en cours », « Rendu 7/12 »,
+    « Assemblage »…), fabrication_echouee, en_attente et en_cours (envoi YouTube), reussi ou echoue.
+    Ne pas appeler plus d'une fois toutes les 15 secondes ; donne l'étape à l'utilisateur quand elle change.
+    Si l'erreur contient uploadLimitExceeded ou quotaExceeded, arrête-toi et préviens l'utilisateur.
     """
     cle, probleme = cle_ou_erreur()
     if probleme:
@@ -306,19 +312,13 @@ class VerifierCle:
 
 @mcp.tool()
 async def fabriquer_voix(texte: str) -> dict:
-    """Lit un texte (le script d'une vidéo) avec LA VOIX DE L'UTILISATEUR, enregistrée sur la page « Ma voix » du site.
+    """Lit un texte avec LA VOIX DE L'UTILISATEUR (enregistrée sur la page « Ma voix » du site) et donne
+    seulement l'AUDIO (lien wav valable 24 h).
 
-    Marche à suivre RAPIDE pour créer une vidéo avec sa voix :
-    1. Écris le script complet. Un paragraphe = une idée, paragraphes séparés par une ligne vide.
-    2. Dès que le script est validé, appelle fabriquer_voix(texte) : les paragraphes sont lus en même temps sur
-       plusieurs machines (environ 1 à 2 minutes). N'attends pas : écris les scènes Remotion PENDANT ce temps.
-    3. Appelle etat_voix(travail) toutes les 15 secondes jusqu'à "pret".
-    4. Télécharge "url_audio" (fichier wav, valable 24 h) et cale les animations sur "minutage" (début et durée de chaque paragraphe).
-    5. Fabrique la vidéo avec Remotion en utilisant TOUS les cœurs : npx remotion render … --concurrency=N
-       (N = nombre de cœurs moins 2), puis envoie-la avec preparer_envoi (contenu_ia = true : une voix clonée
-       est un contenu modifié par IA).
-    Les vidéos avancées (Remotion) se fabriquent avec Claude Code sur ordinateur. Sans terminal (claude.ai, téléphone),
-    propose seulement l'audio à l'utilisateur.
+    Pour une VIDÉO, n'utilise pas cet outil : appelle directement fabriquer_video(avec_ma_voix=true), qui fabrique
+    la voix et la vidéo ensemble sur nos serveurs.
+    Paragraphes séparés par une ligne vide (lus en même temps, environ 1 à 2 minutes). Ensuite, etat_voix(travail)
+    toutes les 15 secondes jusqu'à "pret" : "url_audio" et "minutage" (début et durée de chaque paragraphe).
     Erreurs : voix_absente ou mode_voix (l'utilisateur doit régler sa voix sur le site), quota_voix_atteint (s'arrêter et prévenir).
     """
     cle, probleme = cle_ou_erreur()
@@ -340,31 +340,49 @@ async def etat_voix(travail: str) -> dict:
 
 
 @mcp.tool()
-async def preparer_envoi(titre: str, pour_enfants: bool, contenu_ia: bool, description: str = "",
-                         visibilite: str = "private") -> dict:
-    """Prépare l'envoi sur YouTube d'une vidéo qui se trouve sur l'ordinateur (par exemple fabriquée avec Remotion).
+async def modeles_video() -> dict:
+    """Liste les modèles de vidéos (lecon, astuces, presentation, short) : description, format, durée maximale,
+    types de scène permis, et un exemple complet de champs remplis. Appelle-le avant le premier fabriquer_video
+    de la conversation pour savoir exactement quoi remplir."""
+    cle, probleme = cle_ou_erreur()
+    if probleme:
+        return probleme
+    return await anyio.to_thread.run_sync(lire, cle, ADRESSE_MODELES)
 
-    Réponses obligatoires de YouTube : regarde d'abord mon_compte() → preferences_publication. Pour chaque
-    réponse enregistrée, utilise-la sans redemander et rappelle-la dans ton récapitulatif ; pour chaque valeur null,
-    demande à l'utilisateur :
-    1. si la vidéo est conçue pour les enfants (pour_enfants) ;
-    2. si elle contient des scènes réalistes générées ou modifiées par IA (contenu_ia). Une voix clonée
-       (fabriquer_voix) compte comme contenu IA : contenu_ia = true.
-    Ne choisis jamais à sa place.
-    visibilite : « private » (privée, par défaut), « unlisted » (non répertoriée) ou « public » : demande-lui.
 
-    La réponse contient "adresse_depot" : une adresse secrète, valable 1 heure, utilisable une seule fois.
-    Dépose la vidéo dessus avec la commande donnée dans "commande" (curl -F "fichier=@chemin/video.mp4" "adresse"),
-    sans clé d'API. Puis suis l'envoi avec etat_video(id) ; une fois « reussi », supprime le fichier vidéo de
-    l'ordinateur (il n'est plus utile).
-    Formats : mp4, mov ou webm, 500 Mo maximum. Titre : 100 caractères maximum.
+@mcp.tool()
+async def fabriquer_video(modele: str, script: str, scenes: list[dict], titre: str, pour_enfants: bool,
+                          contenu_ia: bool, avec_ma_voix: bool = True, visibilite: str = "private",
+                          description: str = "", accent: str = "#3B8BFF", musique: str = "calme") -> dict:
+    """Fabrique une vidéo SUR NOS SERVEURS (voix, animation, montage) puis la publie sur la chaîne YouTube de
+    l'utilisateur. Rien à installer, aucune commande : marche depuis claude.ai, ChatGPT, un téléphone ou Claude Code.
+
+    Marche à suivre RAPIDE :
+    1. mon_compte() : chaîne connectée (dis à l'utilisateur sur quelle chaîne la vidéo partira), voix, préférences.
+    2. modeles_video() si tu ne connais pas encore les champs. Choisis le modèle : lecon, astuces, presentation,
+       short (vertical, 60 s max).
+    3. Écris le script (un paragraphe = une scène, paragraphes séparés par une ligne vide) et, pour chaque
+       paragraphe, une scène : {"type": "titre"|"texte"|"points"|"code"|"fin", "texte": "...", "points": [...],
+       "code": "...", "langage": "python"}. Montre le plan à l'utilisateur et attends son accord.
+    4. Réponses obligatoires de YouTube : regarde mon_compte() → preferences_publication. Pour chaque réponse
+       enregistrée, utilise-la sans redemander et rappelle-la ; pour chaque valeur null, demande :
+       pour_enfants (vidéo conçue pour les enfants ?), contenu_ia (scènes réalistes générées par IA ?),
+       visibilite (private, unlisted ou public). Ne choisis jamais à sa place.
+       Avec sa voix (avec_ma_voix = true), contenu_ia vaut toujours true (une voix clonée est un contenu IA).
+    5. Appelle fabriquer_video : la réponse contient "id". Puis etat_video(id) toutes les 15 secondes : etat
+       « fabrication » (avec "etape"), puis « en_attente »/« en_cours » (envoi YouTube), enfin « reussi » :
+       donne le lien https://youtu.be/<youtube_id>.
+    Erreurs : donnees_invalides (lis "details" et corrige les champs), video_trop_longue (raccourcis le script),
+    fabrication_en_cours (une seule vidéo à la fois), voix_absente / mode_voix (régler la voix sur le site),
+    quota_voix_atteint, limite_envois_atteinte, limite_service_atteinte (s'arrêter et prévenir l'utilisateur).
     """
     cle, probleme = cle_ou_erreur()
     if probleme:
         return probleme
-    donnees = {"titre": titre, "description": description, "pour_enfants": pour_enfants, "contenu_ia": contenu_ia,
-               "visibilite": visibilite}
-    return await anyio.to_thread.run_sync(ecrire, cle, ADRESSE_ENVOIS, donnees)
+    donnees = {"modele": modele, "script": script, "scenes": scenes, "titre": titre, "pour_enfants": pour_enfants,
+               "contenu_ia": contenu_ia, "avec_ma_voix": avec_ma_voix, "visibilite": visibilite,
+               "description": description, "accent": accent, "musique": musique}
+    return await anyio.to_thread.run_sync(ecrire, cle, ADRESSE_FABRICATIONS, donnees)
 
 
 @mcp.tool()
@@ -372,7 +390,7 @@ async def mon_compte() -> dict:
     """Résumé du compte de l'utilisateur : chaîne YouTube connectée (et son nom), voix enregistrée,
     minutes de voix restantes ce mois-ci, tests de voix et envois restants aujourd'hui,
     et ses préférences de publication (réponses par défaut aux questions de YouTube : null = lui demander).
-    Utilise-le avant de créer une vidéo, et quand l'utilisateur demande ce qu'il lui reste.
+    Utilise-le avant fabriquer_video, et quand l'utilisateur demande ce qu'il lui reste.
     Indique-lui toujours le nom de la chaîne sur laquelle la vidéo va partir (s'il est connu)."""
     cle, probleme = cle_ou_erreur()
     if probleme:
