@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
 
 from accounts.authentification import AUTHENTIFICATIONS
+from accounts.offres import limites, probleme_fabrication, resume as resume_offre
 from .envois import envoi_en_double, envois_du_jour, probleme_avant_envoi
 from .fabrication import (MODELES, MUSIQUES, TYPES_SCENE, donnees_pour_modal, duree_estimee, duree_max,
                           lancer_fabrication, nouvelle_cle)
@@ -206,7 +207,8 @@ def api_mon_compte(request):
             "remarque": None if (youtube is None or youtube.chaine_titre)
             else "Nom inconnu jusqu'au premier envoi (YouTube le donne à ce moment-là).",
         },
-        "envois_restants_aujourd_hui": max(0, LIMITE_ENVOIS_PAR_JOUR - nb_envois),
+        "envois_restants_aujourd_hui": max(0, limites(request.user).envois_par_jour - nb_envois),
+        "offre": resume_offre(request.user),   # offres Gratuit / Pro (lot 4)
         "voix": {"enregistree": False},
         "preferences_publication": preferences_publication(request.user),
     }
@@ -253,6 +255,9 @@ def api_fabrications(request):
         return erreur(f"Vidéo trop longue : environ {duree_lisible(round(duree))} pour ce script, "
                       f"{duree_lisible(maximum)} au maximum avec le modèle « {d['modele']} ». Raccourcis le script.",
                       "video_trop_longue", status.HTTP_400_BAD_REQUEST)
+    probleme = probleme_fabrication(request.user, round(duree))   # limites de l'offre Gratuit / Pro (lot 4)
+    if probleme:
+        return erreur(probleme[0], probleme[1], status.HTTP_429_TOO_MANY_REQUESTS)
     voix, secondes = None, 0
     if d["avec_ma_voix"]:
         voix, secondes, _, probleme = verifier_voix(request.user, d["script"])

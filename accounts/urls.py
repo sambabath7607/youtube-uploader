@@ -24,6 +24,7 @@ urlpatterns = [
     path("supprimer-compte/", views.supprimer_compte, name="supprimer_compte"),
     path("confidentialite/", views.politique_confidentialite, name="confidentialite"),
     path("conditions/", views.conditions_utilisation, name="conditions"),
+    path("tarifs/", views.tarifs, name="tarifs"),
     path("", views.accueil, name="accueil"),
     path("guide-api/", views.guide_api, name="guide_api"),
     path("guide-claude/", views.guide_claude, name="guide_claude"),

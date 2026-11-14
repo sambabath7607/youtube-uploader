@@ -19,8 +19,10 @@ def probleme_avant_envoi(user):
         return ("Aucune chaîne YouTube connectée. Connecte ta chaîne sur la page d'accueil du site.",
                 "youtube_non_connecte")
     du_jour = envois_du_jour()
-    if du_jour.filter(user=user).count() >= LIMITE_ENVOIS_PAR_JOUR:
-        return (f"Limite de {LIMITE_ENVOIS_PAR_JOUR} envois par jour atteinte. Réessaie demain.",
+    from accounts.offres import limites   # offres Gratuit / Pro (lot 4)
+    limite = limites(user).envois_par_jour
+    if du_jour.filter(user=user).count() >= limite:
+        return (f"Limite de {limite} envois par jour atteinte. Réessaie demain.",
                 "limite_envois_atteinte")
     if du_jour.count() >= limite_service_par_jour():
         # Quota YouTube partagé par tout le service : on s'arrête avant d'atteindre la limite de Google

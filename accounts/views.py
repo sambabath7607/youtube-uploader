@@ -143,6 +143,16 @@ def politique_confidentialite(request):
 def conditions_utilisation(request):
     return render(request, "accounts/conditions.html")
 
+
+def tarifs(request):
+    """Offres Gratuit / Pro : le paiement se fait sur le site vitrine (Stripe), l'accès Pro arrive tout seul ici."""
+    from .offres import offre_du_compte
+    offre_actuelle = offre_du_compte(request.user)[0] if request.user.is_authenticated else None
+    return render(request, "accounts/tarifs.html", {
+        "gratuit": settings.OFFRES["gratuit"], "pro": settings.OFFRES["pro"], "offre_actuelle": offre_actuelle,
+        "url_paiement_pro": settings.URL_PAIEMENT_PRO, "url_gerer_abonnement": settings.URL_GERER_ABONNEMENT,
+    })
+
 def guide_api(request):
     return render(request, "accounts/guide_api.html")
 
@@ -190,7 +200,11 @@ def mon_compte(request):
             return redirect("mon_compte")
     else:
         form = CourrielForm(request.user, initial={"email": request.user.email})
-    return render(request, "accounts/mon_compte.html", {"form": form})
+    from .offres import resume
+    return render(request, "accounts/mon_compte.html", {
+        "form": form, "offre": resume(request.user),
+        "url_paiement_pro": settings.URL_PAIEMENT_PRO, "url_gerer_abonnement": settings.URL_GERER_ABONNEMENT,
+    })
 
 
 # ---------- Contact / support ----------

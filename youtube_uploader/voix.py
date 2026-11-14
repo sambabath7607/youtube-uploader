@@ -25,7 +25,8 @@ def quota_restant(voix):
     if voix.mois_du_compteur != debut_mois:
         voix.mois_du_compteur, voix.secondes_utilisees = debut_mois, 0
         voix.save(update_fields=["mois_du_compteur", "secondes_utilisees"])
-    return max(0, voix.quota_secondes - voix.secondes_utilisees)   # quota propre à chaque utilisateur (offre Pro)
+    from accounts.offres import quota_voix_secondes   # offres Gratuit / Pro (lot 4)
+    return max(0, quota_voix_secondes(voix) - voix.secondes_utilisees)
 
 
 def jeton_travail(id_appel, user):

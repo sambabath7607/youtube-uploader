@@ -5,6 +5,28 @@
 <h1>Mon compte</h1>
 <p>Nom d'utilisateur : <strong>{{ user.username }}</strong></p>
 
+<h2>Mon offre : {{ offre.nom }}</h2>
+{% if offre.offre == "pro" %}
+    <p class="message success">Ton offre Pro est active{% if offre.fin_periode %} (période en cours jusqu'au
+        {{ offre.fin_periode|date:"j F Y" }}){% endif %}.</p>
+{% endif %}
+<ul>
+    <li>Envois sur YouTube aujourd'hui : il en reste <strong>{{ offre.envois_restants_aujourd_hui }}</strong>
+        sur {{ offre.envois_par_jour }}</li>
+    <li>Voix ce mois-ci : il reste <strong>{{ offre.minutes_voix_restantes }} min</strong>
+        sur {{ offre.minutes_voix_par_mois }} min</li>
+    <li>Vidéos fabriquées ce mois-ci : il reste <strong>{{ offre.minutes_video_restantes }} min</strong>
+        sur {{ offre.minutes_video_par_mois }} min ({{ offre.minutes_max_par_video }} min au plus par vidéo)</li>
+</ul>
+{% if offre.offre == "pro" %}
+    <p><a href="{{ url_gerer_abonnement }}">Gérer mon abonnement</a> (factures, annulation) sur le site Batch Code IA.</p>
+{% else %}
+    <p><a href="{{ url_paiement_pro }}" role="button">Passer à Pro</a></p>
+    <p><small>Le paiement se fait sur le site Batch Code IA. Utilise la même adresse courriel
+        ({{ user.email|default:"à ajouter ci-dessous" }}) : ton accès Pro arrive ici tout seul, en quelques secondes.
+        <a href="{% url 'tarifs' %}">Comparer les offres</a>.</small></p>
+{% endif %}
+
 <h2>Mon adresse courriel</h2>
 {% if not user.email %}
     <p class="message error">Ton compte n'a pas encore d'adresse courriel. Sans elle, tu ne peux pas retrouver ton

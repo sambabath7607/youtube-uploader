@@ -728,3 +728,19 @@ Puis vérifier dans claude.ai que le connecteur propose 8 outils (dont `fabrique
    astuces.mp4, presentation.mp4, short.mp4) puis `collectstatic` sur le serveur.
 
 Reste pour Samba : `modal deploy` + essai B2, mesures F4 / T4, mise en ligne (commandes ci-dessus), licence Remotion (L1).
+
+## Lot 4 — Offres et pont de paiement (14 novembre 2026, sur le PC)
+- O1 offres Gratuit / Pro : modèle `Abonnement` (accounts) et une seule fonction `limites(user)` (`accounts/offres.py`)
+  utilisée par l'envoi (envois par jour), la voix (minutes par mois) et la fabrication (minutes de vidéo, durée max).
+  Chiffres dans `settings.OFFRES` : **provisoires, à décider par Samba (D1)** ; Gratuit garde les limites d'aujourd'hui.
+  Délai de grâce de 3 jours après la fin de période si un renouvellement n'arrive pas.
+- O2 pont `POST /youtube/api/v1/interne/abonnements/` (`accounts/pont.py`) : HMAC-SHA256 de « horodatage.corps » avec
+  `PONT_SECRET`, refus après 5 min, chaque événement une seule fois (`EvenementPont`), état plus ancien ignoré ;
+  compte retrouvé par la référence du vitrine puis par le même courriel ; courriel inconnu → compte créé + courriel
+  « Choisis ton mot de passe ». Branché dans youtube_uploader par 5 appels d'une ligne (envois.py, voix.py, api.py, views.py).
+- P5 page Tarifs (`/tarifs/`, lien dans le pied de page) ; « Mon compte » affiche l'offre, les quotas restants et
+  « Passer à Pro » / « Gérer mon abonnement » ; l'API `compte` renvoie l'offre.
+- L4 administration « Coûts par client » : minutes de voix et de vidéo du mois, coût estimé (`COUT_MODAL_MINUTE_VOIX`,
+  `COUT_MODAL_MINUTE_VIDEO` à saisir dans .env).
+- Migration : accounts 0006 (pas encore appliquée : `python manage.py migrate` à lancer par Samba).
+- Reste pour Samba : O5 (`PONT_SECRET` identique dans les deux .env), D1 (chiffres), B4 (essai Stripe en mode test).

@@ -7,6 +7,8 @@ from django.http import FileResponse, Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
+from accounts.offres import quota_voix_secondes
+
 from .envois import probleme_avant_envoi
 from .forms import VideoForm
 from .models import PreferencesPublication, Video, VoixUtilisateur
@@ -104,7 +106,7 @@ def ma_voix(request):
     restant = quota_restant(voix)
     return render(request, "youtube_uploader/ma_voix.html", {
         "voix": voix, "phrase": phrase,
-        "quota_minutes": restant // 60, "quota_secondes": restant % 60, "quota_total": voix.quota_secondes // 60,
+        "quota_minutes": restant // 60, "quota_secondes": restant % 60, "quota_total": quota_voix_secondes(voix) // 60,
         "essais_restants": essais_restants(voix), "essai_en_cours": "essai_voix" in request.session,
     })
 

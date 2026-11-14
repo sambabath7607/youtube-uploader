@@ -1,0 +1,12 @@
+{% autoescape off %}Bonjour,
+
+Merci pour ton abonnement ! Ton accès Pro à YouTube Uploader (Batch Code IA) est actif.
+Un compte a été créé pour toi avec cette adresse courriel (nom d'utilisateur : {{ user.username }}).
+
+Choisis ton mot de passe ici (lien valable 1 heure, une seule fois) :
+{{ lien }}
+
+Lien expiré ? Va sur {{ connexion }} et choisis « Mot de passe oublié » avec cette même adresse.
+
+Batch Code IA
+{% endautoescape %}

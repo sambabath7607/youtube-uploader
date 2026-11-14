@@ -166,6 +166,38 @@ GOOGLE_APPLICATION_VERIFIEE = os.environ.get("GOOGLE_APPLICATION_VERIFIEE", "Fal
 LIMITE_CONTACT_PAR_HEURE = 5
 LIMITE_REINITIALISATION_PAR_HEURE = 5
 
+# --- Offres et pont (lot 4 : offres Gratuit / Pro, paiement sur le site vitrine) ---
+# ⚠️ CHIFFRES PROVISOIRES — À DÉCIDER PAR SAMBA (décision D1, après la mesure des coûts Modal du lot 1).
+# Gratuit garde pour l'instant les limites d'aujourd'hui (5 envois par jour, 10 min de voix) : personne ne perd rien.
+OFFRES = {
+    "gratuit": {
+        "nom": "Gratuit",
+        "prix": "0 $",
+        "envois_par_jour": 5,            # À DÉCIDER PAR SAMBA (plan : 2)
+        "minutes_voix_par_mois": 10,     # À DÉCIDER PAR SAMBA (plan : 2)
+        "minutes_video_par_mois": 3,     # À DÉCIDER PAR SAMBA
+        "minutes_max_par_video": 1,      # À DÉCIDER PAR SAMBA
+    },
+    "pro": {
+        "nom": "Pro",
+        "prix": "19 $ / mois",           # À DÉCIDER PAR SAMBA (plan « Créateur » du site vitrine)
+        "envois_par_jour": 10,           # À DÉCIDER PAR SAMBA (attention au quota YouTube partagé, tâche G5)
+        "minutes_voix_par_mois": 60,     # À DÉCIDER PAR SAMBA
+        "minutes_video_par_mois": 60,    # À DÉCIDER PAR SAMBA
+        "minutes_max_par_video": 15,     # À DÉCIDER PAR SAMBA
+    },
+}
+# Secret partagé avec le site vitrine (même valeur dans les deux .env). Vide = le pont refuse tout.
+PONT_SECRET = os.environ.get("PONT_SECRET", "")
+PONT_TOLERANCE_SECONDES = 5 * 60          # un appel signé il y a plus de 5 min est refusé (anti-rejeu)
+# Pages du site vitrine : paiement de l'offre Pro et gestion de l'abonnement
+URL_PAIEMENT_PRO = os.environ.get("URL_PAIEMENT_PRO") or "https://batchcodeia.com/software/youtube-uploader/#plans"
+URL_GERER_ABONNEMENT = os.environ.get("URL_GERER_ABONNEMENT") or "https://batchcodeia.com/client/subscriptions/"
+# Tableau des coûts par client (administration) : tarif Modal en $ par minute, saisi par Samba dans .env (tâche L2)
+COUT_MODAL_MINUTE_VOIX = float(os.environ.get("COUT_MODAL_MINUTE_VOIX", "0") or 0)
+COUT_MODAL_MINUTE_VIDEO = float(os.environ.get("COUT_MODAL_MINUTE_VIDEO", "0") or 0)
+# --- fin du bloc « Offres et pont » ---
+
 
 MEDIA_ROOT = BASE_DIR / "media"
 MEDIA_URL = "/media/"

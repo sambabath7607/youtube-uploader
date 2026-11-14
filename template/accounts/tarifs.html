@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block titre %}Tarifs{% endblock %}
+{% block description %}Offres Gratuit et Pro de YouTube Uploader : vidéos fabriquées sur nos serveurs, ta voix, envoi sur ta chaîne.{% endblock %}
+
+{% block contenu %}
+<h1>Tarifs</h1>
+<p>Commence gratuitement. Passe à Pro quand tu publies souvent : le paiement se fait sur le site Batch Code IA,
+    et ton accès Pro arrive ici tout seul, en quelques secondes.</p>
+
+<div class="grid">
+    <article>
+        <header><h2>{{ gratuit.nom }}</h2><p><strong>{{ gratuit.prix }}</strong></p></header>
+        <ul>
+            <li>{{ gratuit.envois_par_jour }} envois sur YouTube par jour</li>
+            <li>{{ gratuit.minutes_voix_par_mois }} min de voix par mois</li>
+            <li>{{ gratuit.minutes_video_par_mois }} min de vidéo fabriquée par mois ({{ gratuit.minutes_max_par_video }} min au plus par vidéo)</li>
+        </ul>
+        {% if offre_actuelle == "gratuit" %}
+            <p><small>C'est ton offre actuelle.</small></p>
+        {% elif not user.is_authenticated %}
+            <a href="{% url 'inscription' %}" role="button" class="secondary">Commencer gratuitement</a>
+        {% endif %}
+    </article>
+    <article>
+        <header><h2>{{ pro.nom }}</h2><p><strong>{{ pro.prix }}</strong></p></header>
+        <ul>
+            <li>{{ pro.envois_par_jour }} envois sur YouTube par jour</li>
+            <li>{{ pro.minutes_voix_par_mois }} min de voix par mois</li>
+            <li>{{ pro.minutes_video_par_mois }} min de vidéo fabriquée par mois ({{ pro.minutes_max_par_video }} min au plus par vidéo)</li>
+        </ul>
+        {% if offre_actuelle == "pro" %}
+            <p><small>C'est ton offre actuelle.</small> <a href="{{ url_gerer_abonnement }}">Gérer mon abonnement</a></p>
+        {% else %}
+            <a href="{{ url_paiement_pro }}" role="button">Passer à Pro</a>
+        {% endif %}
+    </article>
+</div>
+
+<h2>Comment ça marche</h2>
+<ol>
+    <li>Sur le site Batch Code IA, abonne-toi au plan « Créateur » avec <strong>la même adresse courriel</strong> que ton compte ici.</li>
+    <li>Ton accès Pro est activé ici automatiquement. Pas encore de compte ? Il est créé pour toi, et tu reçois un courriel
+        « Choisis ton mot de passe ».</li>
+    <li>Annulation quand tu veux sur le site Batch Code IA : tu gardes Pro jusqu'à la fin de la période payée, puis tu repasses en Gratuit.</li>
+</ol>
+<p><small>Service en bêta. Voir les <a href="{% url 'conditions' %}">conditions d'utilisation</a>
+    (renouvellement, annulation, remboursement).</small></p>
+{% endblock %}
