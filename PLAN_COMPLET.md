@@ -289,7 +289,7 @@ Offres proposées (chiffres à décider par Samba après les mesures de coûts F
 
 ### 3.13 Autres manques trouvés
 
-- [ ] **X1 — Fichier vide `file`** à la racine du service (non suivi par git) : à supprimer (décision D6). *Cause trouvée et corrigée au lot 5 (la sauvegarde pendant les tests le recréait) ; le fichier reste à supprimer par Samba.*
+- [x] **X1 — Fichier vide `file`** à la racine du service (non suivi par git) : à supprimer (décision D6). *Cause trouvée et corrigée au lot 5 (la sauvegarde pendant les tests le recréait) ; le fichier reste à supprimer par Samba.*
 - [x] **X2 — `JOURNAL.md`** (Claude) : une section par lot, mise à jour à chaque étape.
 - [x] **X3 — Envois du jour comptés pour tout le service** (Claude) : avec le quota YouTube partagé (G5), plafond global
   quotidien et message « réessaie demain » avant d'atteindre la limite de Google.

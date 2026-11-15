@@ -19,6 +19,14 @@ from .models import CleApi, ConnexionGoogle, ListeAttente
 journal = logging.getLogger(__name__)
 
 
+PROMPT_VIDEO_CLAUDE = (
+    "Crée une vidéo pour ma chaîne YouTube avec le connecteur Batch Code IA. "
+    "Appelle d'abord mon_compte et modeles_video, propose-moi le modèle le plus adapté, puis demande-moi le sujet. "
+    "Écris le script, fais-le valider, puis lance fabriquer_voix et fabriquer_video : la vidéo est fabriquée "
+    "sur les serveurs Batch Code IA, rien sur mon ordinateur. Donne-moi le lien YouTube à la fin."
+)
+
+
 def accueil(request):
     # Visiteur : page publique de présentation (Google exige une page d'accueil qui décrit le service)
     if not request.user.is_authenticated:
@@ -34,8 +42,12 @@ def accueil(request):
         ("Créer une clé et ajouter le connecteur dans Claude", CleApi.objects.filter(user=request.user).exists(), "guide_claude"),
         ("Publier ta première vidéo", Video.objects.filter(user=request.user, etat="reussi").exists(), "guide_claude"),
     ]
+    from urllib.parse import quote
     return render(request, "accounts/accueil.html", {
         "etapes": etapes, "etapes_faites": sum(1 for _, fait, _ in etapes if fait), "nb_etapes": len(etapes),
+        # Ouvre Claude avec la demande déjà écrite : la vidéo est fabriquée sur nos serveurs (outil fabriquer_video).
+        "lien_claude": "https://claude.ai/new?q=" + quote(PROMPT_VIDEO_CLAUDE),
+        "lien_claude_code": "https://claude.ai/code",
     })
 
 

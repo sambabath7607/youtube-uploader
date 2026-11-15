@@ -38,12 +38,20 @@
 <h2>Créer une vidéo avec un agent IA</h2>
 <p>L'agent IA écrit le script ; nos serveurs fabriquent la vidéo avec ta voix et la publient sur ta chaîne.
     Rien à installer : ça marche aussi depuis ton téléphone.</p>
-<p>
-    <a role="button" href="{% url 'guide_claude' %}#creer-une-video"><span aria-hidden="true">🎬</span> Créer une vidéo avec mon agent IA</a>
-    <a role="button" class="secondary" href="{% url 'modeles_video' %}">Voir les modèles</a>
-</p>
-<p><small>Première fois ? Ajoute d'abord le connecteur Batch Code IA :
-    <a href="{% url 'guide_claude' %}">Utiliser avec ton agent IA</a>.</small></p>
+<article class="lancer-claude">
+    <p><strong>Ouvre Claude : ta demande de vidéo est déjà écrite.</strong></p>
+    <p>
+        <a role="button" class="grand" href="{{ lien_claude }}" target="_blank" rel="noopener"
+           aria-label="Créer ma vidéo dans Claude (nouvel onglet)"><span aria-hidden="true">🎬</span> Créer ma vidéo dans Claude</a>
+        <a role="button" class="secondary" href="{{ lien_claude_code }}" target="_blank" rel="noopener"
+           aria-label="Ouvrir Claude Code (nouvel onglet)">Ouvrir Claude Code</a>
+    </p>
+    <p><small>Adresse : <a href="{{ lien_claude }}" target="_blank" rel="noopener">claude.ai/new</a> ·
+        marche sur ordinateur et téléphone. Première fois ?
+        <a href="{% url 'guide_claude' %}">Ajoute le connecteur Batch Code IA</a> (2 min).</small></p>
+</article>
+<p><a href="{% url 'modeles_video' %}">Voir les modèles de vidéos</a> ·
+    <a href="{% url 'guide_claude' %}#creer-une-video">Comment ça marche</a></p>
 
 {% endif %}
 <h2>Ma voix pour les vidéos</h2>

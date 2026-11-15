@@ -192,3 +192,8 @@ footer .liens-pied a {
 
 /* Piège à robots du formulaire Contact : invisible pour les personnes */
 .piege { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+
+/* Accueil : bloc « Créer ma vidéo dans Claude », bien visible */
+.lancer-claude { border: 2px solid var(--bleu); background: var(--surface); }
+.lancer-claude p:last-child { margin-bottom: 0; }
+a[role="button"].grand { font-size: 1.15rem; padding: 14px 24px; min-height: 52px; display: inline-flex; align-items: center; gap: 8px; }
